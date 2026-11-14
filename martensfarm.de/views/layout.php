@@ -40,6 +40,9 @@ $items = [
                 <div class="nav-title">Organisation</div>
                 <span class="nav-item disabled" title="Kommt in Phase 2"><span class="nav-icon">☑</span>Aufgaben</span>
                 <span class="nav-item disabled" title="Kommt in Phase 3"><span class="nav-icon">🧾</span>Rechnungen</span>
+                <?php if (can($u, 'downloads.view')): ?>
+                    <a class="nav-item<?= $nav === 'downloads' ? ' active' : '' ?>" href="<?= e(url('downloads')) ?>"><span class="nav-icon">⬇</span>Downloads</a>
+                <?php endif; ?>
                 <?php if (can_any($u, ['admin.users', 'admin.roles', 'admin.settings', 'finance.manage'])): ?>
                     <div class="nav-title">Verwaltung</div>
                     <?php if (can($u, 'admin.users')): ?>

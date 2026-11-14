@@ -186,7 +186,22 @@ function parse_stats(SimpleXMLElement $x): array
             'area'  => isset($f['area']) ? (float) $f['area'] : null,
         ];
     }
+    // Mods, die auf dem Server laufen: <Mods><Mod name="FS25_x" author="…" version="…" hash="…">Titel</Mod></Mods>
+    $mods = [];
+    foreach ($x->Mods->Mod ?? [] as $m) {
+        $name = trim((string) $m['name']);
+        if ($name === '' || !mod_name_valid($name)) {
+            continue;
+        }
+        $mods[$name] = [
+            'title'   => trim(html_entity_decode((string) $m, ENT_QUOTES | ENT_HTML5, 'UTF-8')),
+            'version' => (string) $m['version'],
+            'author'  => html_entity_decode((string) $m['author'], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            'hash'    => (string) $m['hash'],
+        ];
+    }
     return [
+        'mods'        => $mods,
         'farmlands'   => $farmlands,
         'server_name' => html_entity_decode((string) $x['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
         'map_name'    => (string) $x['mapName'],
@@ -316,6 +331,9 @@ function run_import(bool $force = false): array
     }
     $log[] = 'Server: ' . $stats['server_name'] . ', ' . count($stats['players']) . ' Spieler online.';
     advance_calendar($stats['day_time']);
+    if ($stats['mods']) {
+        sync_server_mods($stats['mods'], $now);
+    }
 
     $files = (array) config('gameserver.files', []);
 

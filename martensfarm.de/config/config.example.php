@@ -38,6 +38,10 @@ return [
         'base_url'   => 'http://IP-DES-GAMESERVERS:PORT',
         // Der "code" aus den Feed-Links. GEHEIM halten!
         'code'       => 'HIER_SERVER_CODE',
+        // Adresse für Mod-Downloads bis vor den Dateinamen (…/mods). Leer = base_url + /mods.
+        // Bei Nitrado steht sie im Web-Interface unter Mods (Link auf eine .zip kopieren, ohne Dateinamen).
+        // Lässt sich auch unter Admin → Einstellungen → Mod-Downloads pflegen.
+        'mods_url'   => '',
         // Welche Savegame-Dateien geholt werden. Der Nitrado-Server gibt nur diese drei frei
         // (farms und environment antworten mit "204 No Content").
         'files'      => ['careerSavegame', 'vehicles', 'economy'],
@@ -47,5 +51,10 @@ return [
         // Kartenbild aus dem Stats-Feed (Dashboard, Einstellungen); wird 6 Stunden zwischengespeichert
         'map_size'    => 512,
         'map_quality' => 60,
+    ],
+
+    'downloads' => [
+        // Größte Mod-Datei, die die App durchreicht (MB)
+        'max_mb' => 1024,
     ],
 ];

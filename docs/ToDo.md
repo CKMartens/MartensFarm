@@ -18,7 +18,7 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben | mittel |
 | 4 | Fahrzeugverwaltung erweitern | klein |
 | 5 | Datenweg erweitern: Export-Mod für Tiere, Lager und Höfe 2–8 | erledigt (0.2) |
-| 6 | Downloadverwaltung | mittel |
+| 6 | Downloadverwaltung | erledigt (0.5) |
 
 ---
 
@@ -89,15 +89,17 @@ Gelöst mit der eigenen Mod `FS25_MartensFarmExport` (Ordner `mod/`, GPL-3.0):
 - [x] Administration → Einstellungen: welche Höfe zählen, Namen, Schwellen
 - [ ] Im echten Spiel prüfen, welche Werte LS25 liefert (Wasser, Stroh, Futter pro Tag, Produktivität). Was fehlt, zeigt `bin/check-mod-export.php` bzw. die Einstellungsseite.
 
-## 6. Downloadverwaltung
+## 6. Downloadverwaltung ✔
 
-Mods, die nicht im offiziellen GIANTS-ModHub sind, für die Mitspieler zum Download.
+Seite `/downloads` mit den Mods vom Gameserver (0.5). Die Liste kommt automatisch aus dem Stats-Feed, die Dateien reicht die App vom Server durch.
 
-- [ ] **Nur eigene oder ausdrücklich freigegebene Mods.** Bei fremden Mods vorher die Erlaubnis der Autoren einholen, viele verbieten Re-Uploads.
-- [ ] Pro Mod: Version, Changelog, Prüfsumme (SHA-256), Lizenz-/Quellenhinweis
-- [ ] Hinweis vor dem Download, dass es private Mods sind (Nutzung auf eigene Gefahr, nicht weitergeben)
-- [ ] Nur für eingeloggte Nutzer. Die Dateien liegen **außerhalb des Document Root** und werden über PHP mit Rechteprüfung ausgeliefert.
-- [ ] Größengrenze pro Datei, kein öffentlicher Link
+- [x] Nur angemeldet und mit Recht *Mods herunterladen*, kein öffentlicher Link: die Server-Adresse bleibt in der App
+- [x] Pro Mod: Version, Autor, Prüfsumme (die der Server meldet), Hinweis/Changelog vom Verwalter
+- [x] Hinweis über der Liste: nur für unsere Runde, nicht weitergeben, Nutzung auf eigene Gefahr
+- [x] Einzelne Mods ausblenden (Recht *Downloads verwalten*), Download-Zahlen je Mod
+- [x] Größengrenze pro Datei (`downloads.max_mb`)
+- [ ] Bei fremden Mods vorher die Erlaubnis der Autoren einholen, viele verbieten Re-Uploads. Im Zweifel ausblenden.
+- [ ] Optional: eigene Mods ohne Gameserver hochladen (Dateien außerhalb des Document Root)
 
 ## Administration
 
