@@ -9,6 +9,7 @@ $appName = (string) config('app.name', 'MartensFarm');
     <meta name="robots" content="noindex, nofollow">
     <title><?= e(($title ?? '') . ' · ' . $appName) ?></title>
     <link rel="stylesheet" href="<?= e(url('assets/app.css')) ?>">
+    <?php require __DIR__ . '/favicon.php'; ?>
 </head>
 <body class="auth">
 <div class="auth-card">
