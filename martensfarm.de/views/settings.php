@@ -1,5 +1,5 @@
 <?php
-/** @var array $byId @var array $activeIds @var array $counts @var array $savegames @var ?int $sgId @var ?array $mfInfo @var array $gs @var ?string $mapName */
+/** @var array $byId @var array $activeIds @var array $counts @var array $savegames @var ?int $sgId @var ?array $mfInfo @var array $gs @var array $mods @var ?string $mapName */
 ?>
 <header class="page-head">
     <div>
@@ -76,6 +76,31 @@
         <h2>Karte</h2>
         <img class="map-img" src="<?= e(url('karte.jpg')) ?>" alt="Karte<?= $mapName ? ' ' . e($mapName) : '' ?>" width="512" height="512" loading="lazy">
         <p class="muted small"><?= $mapName ? e($mapName) . ' · ' : '' ?>Kommt aus dem Stats-Feed und wird alle 6 Stunden neu geladen, nach einem Map- oder Serverwechsel sofort.</p>
+    </section>
+</div>
+
+<div class="grid-2">
+    <section class="card">
+        <h2>Mod-Downloads</h2>
+        <p class="muted small">Von hier holt die App die Mods für die Seite <a href="<?= e(url('downloads')) ?>">Downloads</a>.
+            Bei Nitrado im Web-Interface unter Mods einen Download-Link kopieren und komplett einfügen, der Dateiname wird abgeschnitten.
+            Die Adresse bleibt auf dem Server, die Mitspieler sehen sie nicht.</p>
+        <form method="post" action="<?= e(url('admin/einstellungen')) ?>" class="stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="section" value="mods">
+            <label>Download-Adresse
+                <input type="text" name="mods_base_url" value="" placeholder="<?= e($mods['masked'] !== '' ? 'aktuell ' . $mods['masked'] . ', leer lassen = behalten' : 'https://…/mods/FS25_Beispiel.zip') ?>" maxlength="300" autocomplete="off" spellcheck="false">
+            </label>
+            <p class="muted small">Aktuell aus: <strong><?= ['settings' => 'diesen Einstellungen', 'config' => 'config.php', 'gameserver' => 'Gameserver-Adresse + /mods'][$mods['source']] ?></strong>
+                · <?= (int) $mods['count'] ?> Mods auf dem Server</p>
+            <div class="btn-row">
+                <button class="btn btn-ghost" type="submit" name="do" value="test">Download testen</button>
+                <button class="btn btn-primary" type="submit" name="do" value="save">Speichern</button>
+                <?php if ($mods['source'] === 'settings'): ?>
+                    <button class="btn btn-ghost" type="submit" name="do" value="reset">Vorgabe nutzen</button>
+                <?php endif; ?>
+            </div>
+        </form>
     </section>
 </div>
 

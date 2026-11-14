@@ -27,6 +27,7 @@ require APP_ROOT . '/src/mailer.php';
 require APP_ROOT . '/src/gamedata.php';
 require APP_ROOT . '/src/farmdata.php';
 require APP_ROOT . '/src/finance.php';
+require APP_ROOT . '/src/downloads.php';
 
 /** Zugriff auf Konfigurationswerte per Punkt-Notation, z. B. config('db.host') */
 function config(string $key, mixed $default = null): mixed

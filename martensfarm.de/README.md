@@ -10,6 +10,7 @@ Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im 
 - Fuhrpark mit Schaden, Stunden, Füllständen und Verkaufshistorie
 - Preise vom Server mit bestem und schlechtestem Monat
 - Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4)
+- Downloads: die Mods des Gameservers für die Mitspieler, Liste automatisch aus dem Stats-Feed (ab 0.5)
 
 ---
 
@@ -200,6 +201,24 @@ Der Code wird nur maskiert angezeigt und geht nie im Klartext an den Browser.
 Das Kartenbild aus dem Stats-Feed liefert die App selbst unter `/karte.jpg` aus (nur angemeldet). Sie speichert es 6 Stunden
 in `var/cache/` und lädt es nach einem Server- oder Savegame-Wechsel sofort neu. Größe und Qualität: `gameserver.map_size` und `map_quality`.
 Kein Datenbank-Update nötig.
+
+### Update auf 0.5 (Downloads)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Legt `server_mods` und `mod_downloads` an und gibt Farmmanager und Spieler
+   einmalig das Recht **Mods herunterladen**. Darf mehrfach laufen, spätere Läufe ändern die Rechte nicht mehr.
+3. Unter **Einstellungen → Mod-Downloads** die Download-Adresse eintragen. Bei Nitrado im Web-Interface unter *Mods* den
+   Link einer beliebigen Mod kopieren (`https://…/mods/FS25_Beispiel.zip`) und komplett einfügen, der Dateiname wird abgeschnitten.
+   „Download testen“ prüft das mit einer Mod vom Server. Ohne Eintrag gilt `gameserver.mods_url` aus `config.php`,
+   sonst die Gameserver-Adresse + `/mods`.
+
+So funktioniert's:
+- Die **Liste** (`/downloads`) kommt aus dem `<Mods>`-Block des Stats-Feeds: Name, Titel, Version, Autor, Prüfsumme. Neue oder
+  geänderte Mods sind eine Woche lang als „neu“ markiert, entfernte stehen unter „Nicht mehr auf dem Server“.
+- Beim **Download** holt die App die Datei vom Gameserver und reicht sie durch, ohne sie zu speichern. Die Server-Adresse
+  kommt nie beim Browser an. Größengrenze: `downloads.max_mb` (Standard 1024).
+- **Rechte:** *Mods herunterladen* für die Seite, *Downloads verwalten* zum Ausblenden einzelner Mods (z. B. ModHub-Mods),
+  für Hinweise/Changelog und für die Download-Zahlen. Ausgeblendete Mods sehen und laden nur Verwalter.
 
 ---
 

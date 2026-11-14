@@ -109,6 +109,28 @@ try {
             readfile($file);
             exit;
 
+        case 'GET downloads':
+        case 'POST downloads':
+            $user = require_permission('downloads.view');
+            require APP_ROOT . '/src/pages/downloads.php';
+            break;
+
+        case 'GET downloads/datei':
+            // Mod vom Gameserver durchreichen: Adresse bleibt auf dem Server, nur mit Recht
+            $user = require_permission('downloads.view');
+            $name = (string) ($_GET['mod'] ?? '');
+            $mod = mod_name_valid($name) ? (q('SELECT * FROM server_mods WHERE mod_name = ? AND on_server = 1', [$name])->fetch() ?: null) : null;
+            if ($mod === null || ((int) $mod['is_hidden'] === 1 && !can($user, 'downloads.manage'))) {
+                http_response_code(404);
+                render('error', ['title' => 'Nicht gefunden', 'message' => 'Diese Mod gibt es auf dem Server nicht (mehr).']);
+                break;
+            }
+            session_write_close();   // lange Downloads sollen andere Seiten nicht blockieren
+            $err = mod_stream($mod, $user);
+            http_response_code(502);
+            render('error', ['title' => 'Download fehlgeschlagen', 'message' => $err]);
+            break;
+
         case 'GET preise':
             $user = require_login();
             require APP_ROOT . '/src/pages/prices.php';
