@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<modDesc descVersion="109">
+    <author>CKMartens</author>
+    <version>0.1.0.0</version>
+    <title>
+        <de>MartensFarm Export (Test)</de>
+        <en>MartensFarm Export (Test)</en>
+    </title>
+    <description>
+        <de><![CDATA[Test-Mod für martensfarm.de. Schreibt beim Speichern einen zusätzlichen Block <martensFarm> in careerSavegame.xml: Kontostand und Kredit aller Höfe sowie Tierzahlen pro Stall. Nur der Server schreibt, am Spiel selbst wird nichts verändert.
+
+Lizenz: GPL-3.0, Quelle: https://github.com/CKMartens/MartensFarm]]></de>
+        <en><![CDATA[Test mod for martensfarm.de. On save, adds a <martensFarm> block to careerSavegame.xml with money and loan of all farms and animal counts per husbandry. Server-side write only, no gameplay changes.
+
+License: GPL-3.0, source: https://github.com/CKMartens/MartensFarm]]></en>
+    </description>
+    <iconFilename>icon_MartensFarmExport.dds</iconFilename>
+    <multiplayer supported="true"/>
+    <extraSourceFiles>
+        <sourceFile filename="MartensFarmExport.lua"/>
+    </extraSourceFiles>
+</modDesc>
