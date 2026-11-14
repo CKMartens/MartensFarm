@@ -14,10 +14,11 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | # | Paket | Umfang |
 | --- | --- | --- |
 | 1 | Grundlagen: Rollennamen, Einstellungen | klein |
-| 2 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben | mittel |
-| 3 | Finanzen: Buchungen und Abgleich mit dem Kontostand | mittel |
-| 4 | Datenweg erweitern (FTP oder Mod) für Tiere und Höfe 2–8 | klären |
-| 5 | Downloadverwaltung | mittel |
+| 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | mittel |
+| 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben | mittel |
+| 4 | Fahrzeugverwaltung erweitern | klein |
+| 5 | Datenweg erweitern (FTP oder Mod) für Tiere und Höfe 2–8 | klären |
+| 6 | Downloadverwaltung | mittel |
 
 ---
 
@@ -33,25 +34,7 @@ Ist schon da: Unter `/admin/nutzer` kann man anlegen, bearbeiten und de-/aktivie
 - [ ] Rechte statt fest verdrahteter Rollenprüfungen: Jede Rolle ist ein Bündel von Rechten (z. B. `tasks.assign`, `finance.book`, `admin.settings`). Neue Funktionen fragen Rechte ab, nicht Rollen.
 - [ ] **Deaktivieren statt löschen.** Aufgaben, Buchungen und Verläufe behalten ihren Urheber. Wenn wirklich gelöscht werden muss, dann nur anonymisieren (Name/E-Mail entfernen).
 
-## 2. Aufgaben
-
-Aufgaben manuell oder automatisch anlegen und an Mitspieler delegieren.
-
-- [ ] Kanban mit den Spalten Backlog, To Do, In Arbeit, Prüfung, Erledigt
-- [ ] Zuweisung an Mitglieder, Priorität, Fälligkeit (Spieltag), Verknüpfung mit Fahrzeug oder Feld
-- [ ] **Fahrzeugwartung automatisch**: Die Schwelle ist in `settings` einstellbar, **Default 20 %**. Dashboard und Doku sind von 15 % darauf umzustellen. Es gibt keine doppelten Aufgaben pro Fahrzeug, und die Aufgabe schließt sich, sobald repariert wurde.
-- [ ] **Tierpflege**: Vorerst nur manuell bzw. wiederkehrend (z. B. alle 2 Spieltage), weil die freigegebenen Feeds keine Tierdaten liefern. Automatisch geht es erst mit Paket 4.
-- [ ] Drag & Drop mit externem JS, CSP-konform
-
-### Lohnaufträge (eigenes Objekt)
-
-Ein Lohnauftrag verbindet drei Dinge und bekommt deshalb ein eigenes Objekt:
-- [ ] Auftraggeber (Hof oder extern), Leistung, Feld, vereinbarter Preis, Status
-- [ ] erzeugt eine oder mehrere **Aufgaben**
-- [ ] erzeugt nach Abschluss eine **Einnahme-Buchung**
-- [ ] später Grundlage für die **Rechnung zwischen Höfen** (Phase 3)
-
-## 3. Finanzen
+## 2. Finanzen
 
 Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert, ohne dass gebucht wurde.
 
@@ -68,7 +51,31 @@ Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert
   - Farmland-Besitzer wechselt in `stats.xml` → Landkauf/-verkauf
   - Lohnauftrag erledigt → Einnahme
 
-## 4. Datenweg erweitern
+## 3. Aufgaben
+
+Aufgaben manuell oder automatisch anlegen und an Mitspieler delegieren.
+
+- [ ] Kanban mit den Spalten Backlog, To Do, In Arbeit, Prüfung, Erledigt
+- [ ] Zuweisung an Mitglieder, Priorität, Fälligkeit (Spieltag), Verknüpfung mit Fahrzeug oder Feld
+- [ ] **Fahrzeugwartung automatisch**: Die Schwelle ist in `settings` einstellbar, **Default 20 %**. Dashboard und Doku sind von 15 % darauf umzustellen. Es gibt keine doppelten Aufgaben pro Fahrzeug, und die Aufgabe schließt sich, sobald repariert wurde.
+- [ ] **Tierpflege**: Vorerst nur manuell bzw. wiederkehrend (z. B. alle 2 Spieltage), weil die freigegebenen Feeds keine Tierdaten liefern. Automatisch geht es erst mit Paket 5.
+- [ ] Drag & Drop mit externem JS, CSP-konform
+
+### Lohnaufträge (eigenes Objekt)
+
+Ein Lohnauftrag verbindet drei Dinge und bekommt deshalb ein eigenes Objekt:
+- [ ] Auftraggeber (Hof oder extern), Leistung, Feld, vereinbarter Preis, Status
+- [ ] erzeugt eine oder mehrere **Aufgaben**
+- [ ] erzeugt nach Abschluss eine **Einnahme-Buchung**
+- [ ] später Grundlage für die **Rechnung zwischen Höfen** (Phase 3)
+
+## 4. Fahrzeugverwaltung
+
+Die Anzeige gibt es schon (Fuhrpark mit Schaden, Stunden, Füllständen, Verkaufshistorie).
+
+- [ ] Wünsche konkret sammeln, z. B. Karte mit Positionen, Filter, Kosten pro Fahrzeug (aus Buchungen)
+
+## 5. Datenweg erweitern
 
 Für Tiere, Lager und getrennte Kontostände der Höfe 1–8 reichen die freigegebenen Feeds nicht.
 
@@ -78,7 +85,7 @@ Für Tiere, Lager und getrennte Kontostände der Höfe 1–8 reichen die freigeg
   - Alternativ ein eigener schlanker Export-Mod.
 - [ ] FTP-Abruf schonend: gleicher Mindestabstand wie beim Feed, Zugangsdaten nur in `config.php`.
 
-## 5. Downloadverwaltung
+## 6. Downloadverwaltung
 
 Mods, die nicht im offiziellen GIANTS-ModHub sind, für die Mitspieler zum Download.
 
@@ -87,12 +94,6 @@ Mods, die nicht im offiziellen GIANTS-ModHub sind, für die Mitspieler zum Downl
 - [ ] Hinweis vor dem Download, dass es private Mods sind (Nutzung auf eigene Gefahr, nicht weitergeben)
 - [ ] Nur für eingeloggte Nutzer. Die Dateien liegen **außerhalb des Document Root** und werden über PHP mit Rechteprüfung ausgeliefert.
 - [ ] Größengrenze pro Datei, kein öffentlicher Link
-
-## Fahrzeugverwaltung
-
-Die Anzeige gibt es schon (Fuhrpark mit Schaden, Stunden, Füllständen, Verkaufshistorie).
-
-- [ ] Wünsche konkret sammeln, z. B. Karte mit Positionen, Filter, Kosten pro Fahrzeug (aus Buchungen)
 
 ## Administration
 
