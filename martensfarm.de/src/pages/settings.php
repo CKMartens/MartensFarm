@@ -28,6 +28,48 @@ foreach (['husbandries', 'storages', 'vehicles'] as $table) {
 unset($byId[0]);
 ksort($byId);
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['section'] ?? '') === 'gameserver') {
+    csrf_check();
+    $do = (string) ($_POST['do'] ?? 'test');
+
+    if ($do === 'reset') {
+        setting_set('gs_base_url', null);
+        setting_set('gs_code', null);
+        flash('success', 'Gameserver-Werte aus den Einstellungen gelöscht, es gilt wieder config.php.');
+        redirect('admin/einstellungen');
+    }
+
+    $rawUrl = trim((string) ($_POST['gs_base_url'] ?? ''));
+    $base = gs_normalize_base_url($rawUrl);
+    $code = trim((string) ($_POST['gs_code'] ?? ''));
+    $code = $code !== '' ? $code : gs_code();   // leer = gespeicherten Code behalten
+    if ($base === null) {
+        flash('error', 'Die Adresse muss so aussehen: http://IP-oder-Name:Port (ohne /feed/… dahinter).');
+        redirect('admin/einstellungen');
+    }
+    if ($code === '' || mb_strlen($code) > 100 || !preg_match('/^[A-Za-z0-9_-]+$/', $code)) {
+        flash('error', 'Der Code fehlt oder enthält ungültige Zeichen.');
+        redirect('admin/einstellungen');
+    }
+
+    // In beiden Fällen einmal testen
+    try {
+        $st = parse_stats(gs_stats($base, $code));
+        $test = ['ok', 'Verbindung klappt: ' . $st['server_name'] . ' · ' . $st['map_name'] . ' · LS25 ' . $st['version'] . '.'];
+    } catch (Throwable $e) {
+        $test = ['error', 'Verbindung klappt nicht: ' . $e->getMessage()];
+    }
+
+    if ($do === 'save') {
+        setting_set('gs_base_url', $base);
+        setting_set('gs_code', $code);
+        flash($test[0] === 'ok' ? 'success' : 'warning', 'Gameserver gespeichert. ' . $test[1]);
+    } else {
+        flash($test[0] === 'ok' ? 'success' : 'error', 'Test (nicht gespeichert): ' . $test[1]);
+    }
+    redirect('admin/einstellungen');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
 
@@ -73,5 +115,7 @@ foreach (['husbandries' => 'pens', 'vehicles' => 'vehicles'] as $table => $label
 $savegames = q('SELECT s.*, (SELECT SUM(money) FROM farms_archive a WHERE a.savegame_id = s.id) AS archived_money
                 FROM savegames s ORDER BY s.last_seen_at DESC')->fetchAll();
 $mfInfo = mf_info();
+$gs = ['source' => gs_source(), 'base_url' => gs_base_url(), 'masked' => gs_mask(gs_code())];
+$mapName = q('SELECT map_name FROM server_snapshots WHERE ok = 1 ORDER BY id DESC LIMIT 1')->fetchColumn() ?: null;
 
-render('settings', compact('user', 'byId', 'activeIds', 'counts', 'savegames', 'sgId', 'mfInfo') + ['title' => 'Einstellungen', 'nav' => 'einstellungen']);
+render('settings', compact('user', 'byId', 'activeIds', 'counts', 'savegames', 'sgId', 'mfInfo', 'gs', 'mapName') + ['title' => 'Einstellungen', 'nav' => 'einstellungen']);

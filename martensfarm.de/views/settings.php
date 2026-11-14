@@ -1,5 +1,5 @@
 <?php
-/** @var array $byId @var array $activeIds @var array $counts @var array $savegames @var ?int $sgId @var ?array $mfInfo */
+/** @var array $byId @var array $activeIds @var array $counts @var array $savegames @var ?int $sgId @var ?array $mfInfo @var array $gs @var ?string $mapName */
 ?>
 <header class="page-head">
     <div>
@@ -46,6 +46,38 @@
     </div>
     <p><button class="btn btn-primary" type="submit">Speichern</button></p>
 </form>
+
+<div class="grid-2">
+    <section class="card">
+        <h2>Gameserver</h2>
+        <p class="muted small">Adresse und Feed-Code des Dedicated Servers, z. B. nach einem Server- oder Anbieterwechsel.
+            Beides steht im Web-Interface des Servers in den Feed-Links. Der Code wird hier nie wieder angezeigt, nur seine letzten drei Zeichen.</p>
+        <form method="post" action="<?= e(url('admin/einstellungen')) ?>" class="stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="section" value="gameserver">
+            <label>Adresse
+                <input type="text" name="gs_base_url" value="<?= e($gs['base_url']) ?>" placeholder="http://IP-oder-Name:Port" maxlength="200" autocomplete="off" spellcheck="false">
+            </label>
+            <label>Feed-Code
+                <input type="password" name="gs_code" value="" placeholder="<?= e($gs['masked'] !== '' ? 'gespeichert ' . $gs['masked'] . ', leer lassen = behalten' : 'Code eintragen') ?>" maxlength="100" autocomplete="new-password" spellcheck="false">
+            </label>
+            <p class="muted small">Aktuell aus: <strong><?= $gs['source'] === 'settings' ? 'diesen Einstellungen' : 'config.php' ?></strong></p>
+            <div class="btn-row">
+                <button class="btn btn-ghost" type="submit" name="do" value="test">Verbindung testen</button>
+                <button class="btn btn-primary" type="submit" name="do" value="save">Speichern</button>
+                <?php if ($gs['source'] === 'settings'): ?>
+                    <button class="btn btn-ghost" type="submit" name="do" value="reset">Zurück zu config.php</button>
+                <?php endif; ?>
+            </div>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Karte</h2>
+        <img class="map-img" src="<?= e(url('karte.jpg')) ?>" alt="Karte<?= $mapName ? ' ' . e($mapName) : '' ?>" width="512" height="512" loading="lazy">
+        <p class="muted small"><?= $mapName ? e($mapName) . ' · ' : '' ?>Kommt aus dem Stats-Feed und wird alle 6 Stunden neu geladen, nach einem Map- oder Serverwechsel sofort.</p>
+    </section>
+</div>
 
 <div class="grid-2">
     <section class="card">

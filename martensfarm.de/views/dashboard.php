@@ -85,6 +85,14 @@ if (count($moneyHistory) >= 2) {
     </section>
 
     <section class="card">
+        <h2>Karte</h2>
+        <a href="<?= e(url('karte.jpg')) ?>" title="Karte groß öffnen">
+            <img class="map-img mini" src="<?= e(url('karte.jpg')) ?>" alt="Karte <?= e($lastOk['map_name'] ?? '') ?>" width="260" height="260" loading="lazy">
+        </a>
+        <p class="muted small"><?= e($lastOk['map_name'] ?? '') ?></p>
+    </section>
+
+    <section class="card">
         <h2>Gerade auf dem Hof</h2>
         <?php if ($players): ?>
             <ul class="plain">

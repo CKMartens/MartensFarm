@@ -7,6 +7,9 @@ martensfarm.de/config/config.php
 .env.*
 *.local.php
 
+# Zwischenspeicher der App (z. B. Kartenbild)
+martensfarm.de/var/
+
 # Logs, Sperr- und Temp-Dateien
 *.log
 *.lock
