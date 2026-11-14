@@ -221,6 +221,8 @@ function parse_mf_export(SimpleXMLElement $mf): array
                         'type_id' => isset($st['typeId']) ? mb_substr((string) $st['typeId'], 0, 60) : null,
                         'title'   => isset($st['title']) ? mb_substr((string) $st['title'], 0, 80) : null,
                         'text'    => isset($st['text']) ? mb_substr((string) $st['text'], 0, 80) : null,
+                        // ab 0.3.2: Rohansicht der Geldart zur Diagnose
+                        'raw'     => isset($st['raw']) ? mb_substr((string) $st['raw'], 0, 250) : null,
                     ];
                 }
             }
