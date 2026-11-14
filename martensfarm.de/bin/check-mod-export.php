@@ -56,7 +56,7 @@ try {
             $water = (int) $h['water_auto'] === 1 ? 'auto' : (isset($h['storage']['WATER']) ? fmt_num($h['storage']['WATER']['level']) : '-');
             $products = [];
             foreach ($h['storage'] as $t => $f) {
-                if (!in_array($t, PEN_INPUTS, true)) {
+                if (!in_array($t, PEN_INPUTS, true) && $f['level'] > 0.5) {
                     $products[] = $t . ' ' . fmt_num($f['level']);
                 }
             }

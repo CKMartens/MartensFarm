@@ -45,7 +45,7 @@ $fillCell = function (?array $fill) use ($pct): string {
                 $storage = $p['storage'];
                 $food = (float) $p['food_total'];
                 $perDay = $p['food_per_day'] !== null ? (float) $p['food_per_day'] : 0;
-                $products = array_filter($storage, fn($t) => !in_array($t, PEN_INPUTS, true), ARRAY_FILTER_USE_KEY);
+                $products = array_filter($storage, fn($f, $t) => !in_array($t, PEN_INPUTS, true) && $f['level'] > 0.5, ARRAY_FILTER_USE_BOTH);
             ?>
                 <tr class="<?= (int) $p['animals'] === 0 ? 'inactive' : '' ?>">
                     <td><strong><?= e($p['name']) ?></strong><br><span class="muted small"><?= e(animal_name($p['animal_type'])) ?></span></td>
