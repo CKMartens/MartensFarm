@@ -212,3 +212,4 @@ textarea { resize: vertical; font-family: inherit; }
 .table tr:has(+ tr.sub-row) td { border-bottom: 0; }
 details summary { cursor: pointer; }
 details[open] summary { margin-bottom: .5rem; }
+.upload-form input[type="file"] { width: auto; flex: 1 1 14rem; margin-top: 0; padding: .35rem .5rem; }

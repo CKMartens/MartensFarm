@@ -10,7 +10,7 @@ Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im 
 - Fuhrpark mit Schaden, Stunden, Füllständen und Verkaufshistorie
 - Preise vom Server mit bestem und schlechtestem Monat
 - Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4)
-- Downloads: die Mods des Gameservers für die Mitspieler, Liste automatisch aus dem Stats-Feed (ab 0.5)
+- Downloads: Mods, die nicht im ModHub sind, für die Mitspieler; Server-Liste automatisch aus dem Stats-Feed (ab 0.6)
 
 ---
 
@@ -202,23 +202,24 @@ Das Kartenbild aus dem Stats-Feed liefert die App selbst unter `/karte.jpg` aus 
 in `var/cache/` und lädt es nach einem Server- oder Savegame-Wechsel sofort neu. Größe und Qualität: `gameserver.map_size` und `map_quality`.
 Kein Datenbank-Update nötig.
 
-### Update auf 0.5 (Downloads)
+### Update auf 0.5/0.6 (Downloads)
 
 1. Dateien hochladen (wie oben, `config/config.php` bleibt).
 2. `keyhelp-php85 bin/update-db.php` ausführen. Legt `server_mods` und `mod_downloads` an und gibt Farmmanager und Spieler
    einmalig das Recht **Mods herunterladen**. Darf mehrfach laufen, spätere Läufe ändern die Rechte nicht mehr.
-3. Unter **Einstellungen → Mod-Downloads** die Download-Adresse eintragen. Bei Nitrado im Web-Interface unter *Mods* den
-   Link einer beliebigen Mod kopieren (`https://…/mods/FS25_Beispiel.zip`) und komplett einfügen, der Dateiname wird abgeschnitten.
-   „Download testen“ prüft das mit einer Mod vom Server. Ohne Eintrag gilt `gameserver.mods_url` aus `config.php`,
-   sonst die Gameserver-Adresse + `/mods`.
+3. Upload-Grenze prüfen: In KeyHelp bei der Domain `upload_max_filesize` und `post_max_size` hochsetzen (z. B. 512M).
+   Die aktuelle Grenze steht auf der Download-Seite. Dazu kommt `downloads.max_mb` in `config.php` (Standard 1024).
 
 So funktioniert's:
-- Die **Liste** (`/downloads`) kommt aus dem `<Mods>`-Block des Stats-Feeds: Name, Titel, Version, Autor, Prüfsumme. Neue oder
-  geänderte Mods sind eine Woche lang als „neu“ markiert, entfernte stehen unter „Nicht mehr auf dem Server“.
-- Beim **Download** holt die App die Datei vom Gameserver und reicht sie durch, ohne sie zu speichern. Die Server-Adresse
-  kommt nie beim Browser an. Größengrenze: `downloads.max_mb` (Standard 1024).
-- **Rechte:** *Mods herunterladen* für die Seite, *Downloads verwalten* zum Ausblenden einzelner Mods (z. B. ModHub-Mods),
-  für Hinweise/Changelog und für die Download-Zahlen. Ausgeblendete Mods sehen und laden nur Verwalter.
+- Welche Mods auf dem Server laufen, kommt aus dem `<Mods>`-Block des Stats-Feeds (Name, Titel, Version, Autor).
+- Nitrado gibt die Mod-Dateien nur mit Login im Web-Interface heraus. Deshalb lädt ein Verwalter die ZIPs der Mods,
+  die **nicht im ModHub** sind, unter `/downloads` → „Weitere Mods auf dem Server“ hoch. Die App prüft, ob die ZIP eine
+  `modDesc.xml` im Hauptordner hat, liest die Version aus und speichert SHA-256 und Größe.
+- Die Dateien liegen in `var/mods/` (außerhalb von `public/`, nicht im Repo, wird beim Hochladen der App nicht überschrieben)
+  und gehen nur angemeldet mit Recht über PHP raus. Anderer Ort: `downloads.dir` in `config.php`.
+- Mitspieler sehen nur Mods mit Datei. Spielt man auf dem Server eine neue Version ein, zeigt die Liste
+  „Server hat neuere Version“, bis die neue ZIP hochgeladen ist.
+- **Rechte:** *Mods herunterladen* für die Seite, *Downloads verwalten* für Upload, Löschen, Ausblenden, Hinweise/Changelog und die Download-Zahlen.
 
 ---
 

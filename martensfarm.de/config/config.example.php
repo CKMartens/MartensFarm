@@ -38,10 +38,6 @@ return [
         'base_url'   => 'http://IP-DES-GAMESERVERS:PORT',
         // Der "code" aus den Feed-Links. GEHEIM halten!
         'code'       => 'HIER_SERVER_CODE',
-        // Adresse für Mod-Downloads bis vor den Dateinamen (…/mods). Leer = base_url + /mods.
-        // Bei Nitrado steht sie im Web-Interface unter Mods (Link auf eine .zip kopieren, ohne Dateinamen).
-        // Lässt sich auch unter Admin → Einstellungen → Mod-Downloads pflegen.
-        'mods_url'   => '',
         // Welche Savegame-Dateien geholt werden. Der Nitrado-Server gibt nur diese drei frei
         // (farms und environment antworten mit "204 No Content").
         'files'      => ['careerSavegame', 'vehicles', 'economy'],
@@ -54,7 +50,10 @@ return [
     ],
 
     'downloads' => [
-        // Größte Mod-Datei, die die App durchreicht (MB)
+        // Größte Mod-Datei für Upload/Download (MB). PHP begrenzt zusätzlich über upload_max_filesize
+        // und post_max_size (in KeyHelp unter PHP-Einstellungen der Domain anpassen).
         'max_mb' => 1024,
+        // Ablage der hochgeladenen ZIPs, außerhalb von public/. Standard: var/mods/
+        // 'dir' => '/home/users/BENUTZER/martensfarm-mods',
     ],
 ];

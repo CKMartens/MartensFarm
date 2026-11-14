@@ -4,9 +4,11 @@ declare(strict_types=1);
 /**
  * Mod-Downloads.
  *
- * Die Liste kommt automatisch aus dem Stats-Feed des Gameservers (<Mods>), die Dateien
- * holt die App beim Klick direkt vom Server und reicht sie durch. Die Download-Adresse des
- * Servers landet so nie im Browser, und nur angemeldete Nutzer mit Recht „downloads.view“ kommen ran.
+ * Welche Mods auf dem Server laufen (Name, Version, Autor), kommt automatisch aus dem Stats-Feed.
+ * Die Dateien selbst lädt ein Verwalter in der App hoch: Nitrado gibt Mods nur mit Login im
+ * Web-Interface heraus. Die ZIPs liegen außerhalb des Document Root (var/mods/) und gehen nur mit
+ * Rechteprüfung über PHP raus. Beim Hochladen liest die App die Version aus der modDesc.xml,
+ * so fällt auf, wenn der Server inzwischen eine neuere Version hat.
  */
 
 /** Mod-Namen wie im Spiel: FS25_Irgendwas, nur Buchstaben, Ziffern, _ und - */
@@ -15,68 +17,168 @@ function mod_name_valid(string $name): bool
     return strlen($name) <= 100 && preg_match('/^[A-Za-z0-9][A-Za-z0-9_\-]*$/', $name) === 1;
 }
 
+/** Ablage der hochgeladenen ZIPs (außerhalb von public/) */
+function mods_dir(): string
+{
+    $dir = rtrim((string) config('downloads.dir', APP_ROOT . '/var/mods'), '/');
+    if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
+        throw new RuntimeException('Ablage für Mods lässt sich nicht anlegen.');
+    }
+    return $dir;
+}
+
+function mod_file_path(string $modName): string
+{
+    return mods_dir() . '/' . $modName . '.zip';
+}
+
+/** Größte Datei, die hochgeladen werden kann: App-Grenze und PHP-Grenzen (upload_max_filesize, post_max_size) */
+function mods_upload_limit(): int
+{
+    $toBytes = function (string $v): int {
+        $v = trim($v);
+        $n = (int) $v;
+        return match (strtolower(substr($v, -1))) {
+            'g' => $n * 1024 ** 3,
+            'm' => $n * 1024 ** 2,
+            'k' => $n * 1024,
+            default => $n,
+        };
+    };
+    $limits = [(int) config('downloads.max_mb', 1024) * 1024 * 1024];
+    foreach (['upload_max_filesize', 'post_max_size'] as $ini) {
+        $b = $toBytes((string) ini_get($ini));
+        if ($b > 0) {
+            $limits[] = $b;
+        }
+    }
+    return min($limits);
+}
+
+/** Versionen vergleichbar machen: "1.0.0.0" und "1.0" gelten als gleich */
+function mod_version_norm(?string $v): string
+{
+    $v = trim((string) $v);
+    return $v === '' ? '' : (string) preg_replace('/(\.0)+$/', '', $v);
+}
+
 /**
- * Basis-Adresse für Mod-Downloads (endet vor dem Dateinamen, ohne / am Ende).
- * Vorrang: Einstellungen → config.php (gameserver.mods_url) → Web-Interface des Servers + /mods.
+ * Hochgeladene ZIP prüfen: echte ZIP, modDesc.xml im Hauptordner, Version auslesen.
+ * Gibt ['version' => …, 'title' => …] zurück oder wirft eine Exception mit verständlicher Meldung.
  */
-function mods_base_url(): string
+function mod_inspect_zip(string $file): array
 {
-    $v = trim((string) setting_get('mods_base_url', ''));
-    if ($v === '') {
-        $v = trim((string) config('gameserver.mods_url', ''));
+    if (!class_exists('ZipArchive')) {
+        // Ohne zip-Erweiterung wenigstens die Signatur prüfen
+        $sig = (string) file_get_contents($file, false, null, 0, 4);
+        if ($sig !== "PK\x03\x04") {
+            throw new RuntimeException('Das ist keine ZIP-Datei.');
+        }
+        return ['version' => null, 'title' => null];
     }
-    if ($v === '' || str_contains($v, 'IP-DES-GAMESERVERS')) {
-        $gs = gs_base_url();
-        $v = $gs !== '' ? $gs . '/mods' : '';
+    $zip = new ZipArchive();
+    if ($zip->open($file, ZipArchive::RDONLY) !== true) {
+        throw new RuntimeException('Das ist keine gültige ZIP-Datei.');
     }
-    return rtrim($v, '/');
+    $xml = $zip->getFromName('modDesc.xml');
+    $zip->close();
+    if ($xml === false) {
+        throw new RuntimeException('In der ZIP fehlt die modDesc.xml im Hauptordner. Ist das wirklich eine LS-Mod (nicht doppelt gezippt)?');
+    }
+    $prev = libxml_use_internal_errors(true);
+    $x = simplexml_load_string($xml, 'SimpleXMLElement', LIBXML_NONET | LIBXML_NOCDATA);
+    libxml_use_internal_errors($prev);
+    if ($x === false) {
+        return ['version' => null, 'title' => null];
+    }
+    $title = null;
+    foreach (['de', 'en'] as $lang) {
+        if (isset($x->title->{$lang}) && trim((string) $x->title->{$lang}) !== '') {
+            $title = trim((string) $x->title->{$lang});
+            break;
+        }
+    }
+    $version = trim((string) ($x->version ?? ''));
+    return ['version' => $version !== '' ? mb_substr($version, 0, 30) : null, 'title' => $title];
 }
 
-/** Woher die Download-Adresse kommt: 'settings', 'config' oder 'gameserver' */
-function mods_source(): string
+/** Hochgeladene Datei für eine Mod übernehmen. Gibt eine Erfolgsmeldung zurück oder wirft. */
+function mod_store_upload(array $mod, array $upload, array $user): string
 {
-    if (trim((string) setting_get('mods_base_url', '')) !== '') {
-        return 'settings';
+    $err = (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE);
+    if ($err === UPLOAD_ERR_INI_SIZE || $err === UPLOAD_ERR_FORM_SIZE) {
+        throw new RuntimeException('Die Datei ist zu groß (Grenze ' . fmt_num(mods_upload_limit() / 1048576) . ' MB).');
     }
-    $c = trim((string) config('gameserver.mods_url', ''));
-    return $c !== '' && !str_contains($c, 'IP-DES-GAMESERVERS') ? 'config' : 'gameserver';
+    if ($err !== UPLOAD_ERR_OK || !is_uploaded_file((string) ($upload['tmp_name'] ?? ''))) {
+        throw new RuntimeException('Es kam keine Datei an.');
+    }
+    $tmp = (string) $upload['tmp_name'];
+    $size = (int) filesize($tmp);
+    if ($size <= 0 || $size > mods_upload_limit()) {
+        throw new RuntimeException('Die Datei ist leer oder zu groß.');
+    }
+    $name = (string) $mod['mod_name'];
+    $orig = pathinfo((string) ($upload['name'] ?? ''), PATHINFO_FILENAME);
+    if ($orig !== '' && strcasecmp($orig, $name) !== 0 && !isset($upload['force'])) {
+        throw new RuntimeException('Die Datei heißt „' . $orig . '.zip“, erwartet ist „' . $name . '.zip“. Falsche Mod erwischt?');
+    }
+    $info = mod_inspect_zip($tmp);
+    $sha = hash_file('sha256', $tmp);
+
+    $target = mod_file_path($name);
+    $part = $target . '.part';
+    if (!move_uploaded_file($tmp, $part) || !@rename($part, $target)) {
+        @unlink($part);
+        throw new RuntimeException('Die Datei ließ sich nicht speichern (Rechte auf var/mods/ prüfen).');
+    }
+    @chmod($target, 0640);
+
+    q('UPDATE server_mods SET file_version = ?, file_sha256 = ?, file_size = ?, file_uploaded_at = ?, file_uploaded_by = ? WHERE mod_name = ?',
+        [$info['version'], $sha, $size, now(), (int) $user['id'], $name]);
+
+    $msg = $name . '.zip hochgeladen (' . fmt_num($size / 1048576, 1) . ' MB';
+    $msg .= $info['version'] ? ', Version ' . $info['version'] . ')' : ', Version unbekannt)';
+    if ($info['version'] && $mod['version'] && mod_version_norm($info['version']) !== mod_version_norm((string) $mod['version'])) {
+        return $msg . '. Achtung: Auf dem Server läuft Version ' . $mod['version'] . '.';
+    }
+    return $msg . '.';
 }
 
-/**
- * Eingabe prüfen: http(s)-Adresse mit Pfad, ohne Zugangsdaten/Query. Ein kompletter Link auf eine
- * Mod (…/mods/FS25_Irgendwas.zip) ist auch ok, der Dateiname wird abgeschnitten. Null = ungültig.
- */
-function mods_normalize_url(string $url): ?string
+function mod_delete_file(string $modName): void
 {
-    $url = trim($url);
-    $p = parse_url($url);
-    if (!$p || !in_array(strtolower($p['scheme'] ?? ''), ['http', 'https'], true) || empty($p['host'])
-        || isset($p['user']) || isset($p['pass']) || isset($p['query']) || isset($p['fragment'])) {
-        return null;
-    }
-    $path = (string) ($p['path'] ?? '');
-    if (preg_match('~/[^/]+\.zip$~i', $path)) {
-        $path = (string) preg_replace('~/[^/]+\.zip$~i', '', $path);
-    }
-    if (preg_match('~[^A-Za-z0-9/._\-]~', $path)) {
-        return null;
-    }
-    return strtolower($p['scheme']) . '://' . strtolower($p['host']) . (isset($p['port']) ? ':' . (int) $p['port'] : '') . rtrim($path, '/');
+    @unlink(mod_file_path($modName));
+    q('UPDATE server_mods SET file_version = NULL, file_sha256 = NULL, file_size = NULL, file_uploaded_at = NULL, file_uploaded_by = NULL WHERE mod_name = ?', [$modName]);
 }
 
-/** Adresse für die Anzeige: Host und Pfad weglassen, damit sie auf keinem Screenshot landet */
-function mods_mask_url(string $url): string
+/** Status einer Mod für die Liste: 'ok', 'outdated', 'missing' */
+function mod_file_state(array $mod): string
 {
-    $p = parse_url($url);
-    if (!$p || empty($p['host'])) {
-        return '';
+    if (empty($mod['file_sha256']) || !is_file(mod_file_path((string) $mod['mod_name']))) {
+        return 'missing';
     }
-    return ($p['scheme'] ?? 'https') . '://…/' . basename((string) ($p['path'] ?? ''));
+    if ($mod['file_version'] && $mod['version'] && mod_version_norm((string) $mod['file_version']) !== mod_version_norm((string) $mod['version'])) {
+        return 'outdated';
+    }
+    return 'ok';
 }
 
-function mod_download_url(string $modName, ?string $base = null): string
+/** ZIP an den Browser ausliefern und den Download zählen */
+function mod_send_file(array $mod, array $user): never
 {
-    return ($base ?? mods_base_url()) . '/' . rawurlencode($modName) . '.zip';
+    $name = (string) $mod['mod_name'];
+    $file = mod_file_path($name);
+    @set_time_limit(0);
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="' . $name . '.zip"');
+    header('Content-Length: ' . filesize($file));
+    header('Cache-Control: private, no-store');
+    q('INSERT INTO mod_downloads (mod_name, version, user_id, downloaded_at) VALUES (?, ?, ?, ?)',
+        [$name, $mod['file_version'] ?: $mod['version'], $user['id'] ?? null, now()]);
+    readfile($file);
+    exit;
 }
 
 /** Mod-Liste aus dem Feed in die Datenbank übernehmen */
@@ -102,116 +204,4 @@ function sync_server_mods(array $mods, string $now): void
         q('UPDATE server_mods SET on_server = 0 WHERE mod_name IN (' . implode(',', array_fill(0, count($gone), '?')) . ')', array_values($gone));
     }
     q('DELETE FROM mod_downloads WHERE downloaded_at < NOW() - INTERVAL 180 DAY');
-}
-
-/**
- * Mod vom Server holen und direkt an den Browser durchreichen (ohne Zwischenspeichern).
- * Gibt bei Erfolg nichts zurück und beendet, sonst eine Fehlermeldung für die Seite.
- */
-function mod_stream(array $mod, ?array $user): string
-{
-    $base = mods_base_url();
-    if ($base === '') {
-        return 'Für Downloads ist keine Server-Adresse eingetragen.';
-    }
-    @set_time_limit(0);
-    while (ob_get_level() > 0) {
-        ob_end_clean();
-    }
-
-    $name = (string) $mod['mod_name'];
-    $status = 0;
-    $length = null;
-    $started = false;
-    $maxBytes = (int) config('downloads.max_mb', 1024) * 1024 * 1024;
-
-    $ch = curl_init(mod_download_url($name, $base));
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER  => false,
-        CURLOPT_FOLLOWLOCATION  => true,
-        CURLOPT_MAXREDIRS       => 3,
-        CURLOPT_PROTOCOLS       => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-        CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-        CURLOPT_CONNECTTIMEOUT  => 10,
-        CURLOPT_LOW_SPEED_LIMIT => 1024,  // abbrechen, wenn 60 s lang weniger als 1 KB/s kommt
-        CURLOPT_LOW_SPEED_TIME  => 60,
-        CURLOPT_USERAGENT       => 'MartensFarm-Downloads/1.0',
-        CURLOPT_HEADERFUNCTION  => function ($ch, string $line) use (&$status, &$length): int {
-            if (preg_match('~^HTTP/\S+\s+(\d{3})~', $line, $m)) {
-                $status = (int) $m[1];   // bei Weiterleitungen gilt die letzte Antwort
-                $length = null;
-            } elseif (preg_match('~^Content-Length:\s*(\d+)~i', $line, $m)) {
-                $length = (int) $m[1];
-            }
-            return strlen($line);
-        },
-        CURLOPT_WRITEFUNCTION   => function ($ch, string $chunk) use (&$status, &$length, &$started, $name, $maxBytes): int {
-            if (!$started) {
-                if ($status !== 200 || ($length !== null && $length > $maxBytes)) {
-                    return -1;   // abbrechen, Fehlerseite statt halber Datei
-                }
-                $started = true;
-                header('Content-Type: application/zip');
-                header('Content-Disposition: attachment; filename="' . $name . '.zip"');
-                header('Cache-Control: private, no-store');
-                if ($length !== null) {
-                    header('Content-Length: ' . $length);
-                }
-            }
-            echo $chunk;
-            flush();
-            return strlen($chunk);
-        },
-    ]);
-    $ok = curl_exec($ch);
-    $err = curl_error($ch);
-    unset($ch);
-
-    if ($started) {
-        if ($ok) {
-            q('INSERT INTO mod_downloads (mod_name, version, user_id, downloaded_at) VALUES (?, ?, ?, ?)',
-                [$name, $mod['version'], $user['id'] ?? null, now()]);
-        } else {
-            error_log('MartensFarm: Download ' . $name . ' abgebrochen: ' . $err);
-        }
-        exit;
-    }
-    if ($status === 200 && $length !== null && $length > $maxBytes) {
-        return 'Die Datei ist größer als erlaubt (' . (int) config('downloads.max_mb', 1024) . ' MB).';
-    }
-    if ($status === 404) {
-        return 'Der Server bietet diese Mod nicht zum Download an (404). Ist die Adresse unter Einstellungen → Mod-Downloads richtig?';
-    }
-    // Keine Adresse in die Meldung, die landet auf der Seite
-    $host = (string) parse_url($base, PHP_URL_HOST);
-    $err = $host !== '' ? str_replace($host, 'Gameserver', $err) : $err;
-    return trim('Download klappt gerade nicht' . ($status ? " ({$status})" : '') . '. ' . $err);
-}
-
-/** Erreichbarkeit prüfen: HEAD auf eine Mod. Gibt [ok, Meldung] zurück. */
-function mods_test(string $base, string $modName): array
-{
-    $ch = curl_init(mod_download_url($modName, $base));
-    curl_setopt_array($ch, [
-        CURLOPT_NOBODY          => true,
-        CURLOPT_RETURNTRANSFER  => true,
-        CURLOPT_FOLLOWLOCATION  => true,
-        CURLOPT_MAXREDIRS       => 3,
-        CURLOPT_PROTOCOLS       => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-        CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
-        CURLOPT_CONNECTTIMEOUT  => 5,
-        CURLOPT_TIMEOUT         => 15,
-        CURLOPT_USERAGENT       => 'MartensFarm-Downloads/1.0',
-    ]);
-    curl_exec($ch);
-    $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    $size = (float) curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
-    $err = curl_error($ch);
-    unset($ch);
-    if ($status === 200) {
-        return [true, $modName . '.zip ist erreichbar' . ($size > 0 ? ' (' . fmt_num($size / 1048576, 1) . ' MB)' : '') . '.'];
-    }
-    $host = (string) parse_url($base, PHP_URL_HOST);
-    $err = $host !== '' ? str_replace($host, 'Gameserver', $err) : $err;
-    return [false, trim($modName . '.zip nicht erreichbar' . ($status ? " ({$status})" : '') . '. ' . $err)];
 }

@@ -28,32 +28,6 @@ foreach (['husbandries', 'storages', 'vehicles'] as $table) {
 unset($byId[0]);
 ksort($byId);
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['section'] ?? '') === 'mods') {
-    csrf_check();
-    $do = (string) ($_POST['do'] ?? 'test');
-    if ($do === 'reset') {
-        setting_set('mods_base_url', null);
-        flash('success', 'Download-Adresse gelöscht, es gilt wieder die Vorgabe.');
-        redirect('admin/einstellungen');
-    }
-    $raw = trim((string) ($_POST['mods_base_url'] ?? ''));
-    $base = $raw === '' ? mods_base_url() : mods_normalize_url($raw);
-    if ($base === null || $base === '') {
-        flash('error', 'Die Adresse muss mit http:// oder https:// anfangen, ohne ?… dahinter. Ein kompletter Link auf eine .zip geht auch.');
-        redirect('admin/einstellungen');
-    }
-    // Mit einer Mod testen, die der Server meldet (am liebsten unsere Export-Mod)
-    $probe = q("SELECT mod_name FROM server_mods WHERE on_server = 1 ORDER BY mod_name = 'FS25_MartensFarmExport' DESC, mod_name LIMIT 1")->fetchColumn();
-    $test = $probe ? mods_test($base, (string) $probe) : [false, 'Noch keine Mods bekannt, Test erst nach dem nächsten Abruf möglich.'];
-    if ($do === 'save' && $raw !== '') {
-        setting_set('mods_base_url', $base);
-        flash($test[0] ? 'success' : 'warning', 'Download-Adresse gespeichert. ' . $test[1]);
-    } else {
-        flash($test[0] ? 'success' : 'error', 'Test (nicht gespeichert): ' . $test[1]);
-    }
-    redirect('admin/einstellungen');
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['section'] ?? '') === 'gameserver') {
     csrf_check();
     $do = (string) ($_POST['do'] ?? 'test');
@@ -142,7 +116,6 @@ $savegames = q('SELECT s.*, (SELECT SUM(money) FROM farms_archive a WHERE a.save
                 FROM savegames s ORDER BY s.last_seen_at DESC')->fetchAll();
 $mfInfo = mf_info();
 $gs = ['source' => gs_source(), 'base_url' => gs_base_url(), 'masked' => gs_mask(gs_code())];
-$mods = ['source' => mods_source(), 'masked' => mods_mask_url(mods_base_url()), 'count' => (int) q('SELECT COUNT(*) FROM server_mods WHERE on_server = 1')->fetchColumn()];
 $mapName = q('SELECT map_name FROM server_snapshots WHERE ok = 1 ORDER BY id DESC LIMIT 1')->fetchColumn() ?: null;
 
-render('settings', compact('user', 'byId', 'activeIds', 'counts', 'savegames', 'sgId', 'mfInfo', 'gs', 'mods', 'mapName') + ['title' => 'Einstellungen', 'nav' => 'einstellungen']);
+render('settings', compact('user', 'byId', 'activeIds', 'counts', 'savegames', 'sgId', 'mfInfo', 'gs', 'mapName') + ['title' => 'Einstellungen', 'nav' => 'einstellungen']);

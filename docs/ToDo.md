@@ -18,7 +18,7 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben | mittel |
 | 4 | Fahrzeugverwaltung erweitern | klein |
 | 5 | Datenweg erweitern: Export-Mod für Tiere, Lager und Höfe 2–8 | erledigt (0.2) |
-| 6 | Downloadverwaltung | erledigt (0.5) |
+| 6 | Downloadverwaltung | erledigt (0.6) |
 
 ---
 
@@ -91,15 +91,15 @@ Gelöst mit der eigenen Mod `FS25_MartensFarmExport` (Ordner `mod/`, GPL-3.0):
 
 ## 6. Downloadverwaltung ✔
 
-Seite `/downloads` mit den Mods vom Gameserver (0.5). Die Liste kommt automatisch aus dem Stats-Feed, die Dateien reicht die App vom Server durch.
+Seite `/downloads` (0.6). Welche Mods auf dem Server laufen, kommt automatisch aus dem Stats-Feed. Die Dateien lädt ein Verwalter hoch,
+weil Nitrado Mods nur mit Login im Web-Interface herausgibt (der Durchreich-Weg aus 0.5 ist deshalb wieder raus).
 
-- [x] Nur angemeldet und mit Recht *Mods herunterladen*, kein öffentlicher Link: die Server-Adresse bleibt in der App
-- [x] Pro Mod: Version, Autor, Prüfsumme (die der Server meldet), Hinweis/Changelog vom Verwalter
+- [x] Nur angemeldet und mit Recht *Mods herunterladen*. Dateien liegen **außerhalb des Document Root** (`var/mods/`) und gehen über PHP mit Rechteprüfung raus
+- [x] Mitspieler sehen nur Mods mit hochgeladener Datei, also die, die nicht im ModHub sind
+- [x] Pro Mod: Version aus der `modDesc.xml`, SHA-256, Größe, Hinweis/Changelog; Warnung, wenn der Server eine neuere Version hat
 - [x] Hinweis über der Liste: nur für unsere Runde, nicht weitergeben, Nutzung auf eigene Gefahr
-- [x] Einzelne Mods ausblenden (Recht *Downloads verwalten*), Download-Zahlen je Mod
-- [x] Größengrenze pro Datei (`downloads.max_mb`)
-- [ ] Bei fremden Mods vorher die Erlaubnis der Autoren einholen, viele verbieten Re-Uploads. Im Zweifel ausblenden.
-- [ ] Optional: eigene Mods ohne Gameserver hochladen (Dateien außerhalb des Document Root)
+- [x] Größengrenze pro Datei (`downloads.max_mb` und PHP-Upload-Grenze), Download-Zahlen je Mod
+- [ ] Bei fremden Mods vorher die Erlaubnis der Autoren einholen, viele verbieten Re-Uploads
 
 ## Administration
 

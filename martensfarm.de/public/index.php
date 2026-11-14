@@ -116,20 +116,17 @@ try {
             break;
 
         case 'GET downloads/datei':
-            // Mod vom Gameserver durchreichen: Adresse bleibt auf dem Server, nur mit Recht
+            // Hochgeladene ZIP ausliefern: liegt außerhalb von public/, nur mit Recht
             $user = require_permission('downloads.view');
             $name = (string) ($_GET['mod'] ?? '');
-            $mod = mod_name_valid($name) ? (q('SELECT * FROM server_mods WHERE mod_name = ? AND on_server = 1', [$name])->fetch() ?: null) : null;
-            if ($mod === null || ((int) $mod['is_hidden'] === 1 && !can($user, 'downloads.manage'))) {
+            $mod = mod_name_valid($name) ? (q('SELECT * FROM server_mods WHERE mod_name = ?', [$name])->fetch() ?: null) : null;
+            if ($mod === null || mod_file_state($mod) === 'missing' || ((int) $mod['is_hidden'] === 1 && !can($user, 'downloads.manage'))) {
                 http_response_code(404);
-                render('error', ['title' => 'Nicht gefunden', 'message' => 'Diese Mod gibt es auf dem Server nicht (mehr).']);
+                render('error', ['title' => 'Nicht gefunden', 'message' => 'Für diese Mod gibt es keine Datei.']);
                 break;
             }
             session_write_close();   // lange Downloads sollen andere Seiten nicht blockieren
-            $err = mod_stream($mod, $user);
-            http_response_code(502);
-            render('error', ['title' => 'Download fehlgeschlagen', 'message' => $err]);
-            break;
+            mod_send_file($mod, $user);
 
         case 'GET preise':
             $user = require_login();
