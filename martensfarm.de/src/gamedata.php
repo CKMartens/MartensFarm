@@ -472,6 +472,15 @@ function run_import(bool $force = false): array
         }
     }
 
+    // 7) Automatische Aufgaben (Werkstatt, Tierpflege) abgleichen
+    if ($sgId !== null) {
+        try {
+            tasks_auto_sync($sgId, $now, $log);
+        } catch (Throwable $e) {
+            $log[] = 'Aufgaben: ' . $e->getMessage();
+        }
+    }
+
     // Verlauf schlank halten: Snapshots älter als 90 Tage löschen
     q('DELETE FROM server_snapshots WHERE fetched_at < NOW() - INTERVAL 90 DAY');
     setting_set('last_import_ok', '1');
@@ -529,6 +538,11 @@ function advance_calendar(?int $dayTime): void
         setting_set('current_period', PERIOD_ORDER[($idx + 1) % 12]);
     }
     setting_set('current_day_in_period', (string) $day);
+    // Spieltag mitzählen, damit „heute“ auch zwischen zwei Saves stimmt (der nächste Save setzt ihn wieder exakt)
+    $gameDay = setting_get('current_game_day');
+    if ($gameDay !== null && $gameDay !== '') {
+        setting_set('current_game_day', (string) ((int) $gameDay + 1));
+    }
 }
 
 /**

@@ -19,6 +19,9 @@ $items = [
     <title><?= e(($title ?? '') . ' · ' . $appName) ?></title>
     <link rel="stylesheet" href="<?= e(url('assets/app.css')) ?>">
     <?php require __DIR__ . '/favicon.php'; ?>
+    <?php foreach ($scripts ?? [] as $js): ?>
+        <script src="<?= e(url('assets/' . $js)) ?>" defer></script>
+    <?php endforeach; ?>
 </head>
 <body>
 <div class="shell">
@@ -38,7 +41,8 @@ $items = [
                     <a class="nav-item<?= $nav === 'finanzen' ? ' active' : '' ?>" href="<?= e(url('finanzen')) ?>"><span class="nav-icon">📒</span>Finanzen</a>
                 <?php endif; ?>
                 <div class="nav-title">Organisation</div>
-                <span class="nav-item disabled" title="Kommt in Phase 2"><span class="nav-icon">☑</span>Aufgaben</span>
+                <a class="nav-item<?= $nav === 'aufgaben' ? ' active' : '' ?>" href="<?= e(url('aufgaben')) ?>"><span class="nav-icon">☑</span>Aufgaben</a>
+                <a class="nav-item<?= $nav === 'lohnauftraege' ? ' active' : '' ?>" href="<?= e(url('lohnauftraege')) ?>"><span class="nav-icon">🤝</span>Lohnaufträge</a>
                 <span class="nav-item disabled" title="Kommt in Phase 3"><span class="nav-icon">🧾</span>Rechnungen</span>
                 <?php if (can($u, 'downloads.view')): ?>
                     <a class="nav-item<?= $nav === 'downloads' ? ' active' : '' ?>" href="<?= e(url('downloads')) ?>"><span class="nav-icon">⬇</span>Downloads</a>

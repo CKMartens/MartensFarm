@@ -213,3 +213,36 @@ textarea { resize: vertical; font-family: inherit; }
 details summary { cursor: pointer; }
 details[open] summary { margin-bottom: .5rem; }
 .upload-form input[type="file"] { width: auto; flex: 1 1 14rem; margin-top: 0; padding: .35rem .5rem; }
+
+/* Aufgaben-Board */
+.board { display: grid; grid-template-columns: repeat(5, minmax(180px, 1fr)); gap: .8rem; overflow-x: auto; padding-bottom: .5rem; margin-bottom: 1rem; }
+.board-col { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius); padding: .7rem; min-height: 160px; transition: border-color .15s, background .15s; }
+.board-col h2 { font-size: .95rem; margin-bottom: .6rem; }
+.board-col.drop-ok { border-color: var(--green-dark); border-style: dashed; }
+.board-col.drop-no { opacity: .55; }
+.board-col.drop-hover { background: var(--panel-2); border-color: var(--green); }
+.board-cards { display: flex; flex-direction: column; gap: .55rem; min-height: 60px; }
+.board-empty { margin: .2rem 0; }
+.task-card { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 10px; padding: .55rem .65rem; }
+.task-card[draggable="true"] { cursor: grab; }
+.task-card.dragging { opacity: .45; }
+.task-card.saving { opacity: .7; }
+.task-card.prio-1 { border-left-color: var(--muted); }
+.task-card.prio-2 { border-left-color: var(--green-dark); }
+.task-card.prio-3 { border-left-color: var(--warn); }
+.task-card.prio-4 { border-left-color: var(--bad); }
+.task-card.overdue { box-shadow: 0 0 0 1px var(--bad) inset; }
+.task-title { display: block; color: var(--text); font-weight: 600; margin-bottom: .35rem; overflow-wrap: anywhere; }
+.task-meta { display: flex; flex-wrap: wrap; gap: .25rem; align-items: center; }
+.task-meta .badge { font-size: .75rem; }
+.task-actions { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .45rem; }
+.task-actions .btn-sm { padding: .15rem .5rem; font-size: .75rem; }
+.task-log li.comment { border-left: 3px solid var(--green-dark); padding-left: .5rem; }
+.grid-2.tight { gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.grid-2.tight > label { margin: 0; }
+details summary h2 { display: inline; }
+@media (max-width: 800px) {
+    .board { grid-template-columns: repeat(5, 82vw); scroll-snap-type: x mandatory; }
+    .board-col { scroll-snap-align: start; }
+}
+h2.spaced { margin-top: 1.2rem; }

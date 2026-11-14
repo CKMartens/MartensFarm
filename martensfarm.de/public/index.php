@@ -109,6 +109,55 @@ try {
             readfile($file);
             exit;
 
+        case 'GET aufgaben':
+        case 'POST aufgaben':
+            $user = require_login();
+            require APP_ROOT . '/src/pages/tasks.php';
+            break;
+
+        case 'POST aufgaben/verschieben':
+            // Drag & Drop auf dem Board (assets/tasks.js), Antwort als JSON
+            $user = require_login();
+            header('Content-Type: application/json; charset=utf-8');
+            $sent = (string) ($_POST['_csrf'] ?? '');
+            if ($sent === '' || !hash_equals(csrf_token(), $sent)) {
+                http_response_code(400);
+                echo json_encode(['ok' => false, 'message' => 'Formular abgelaufen, bitte Seite neu laden.']);
+                exit;
+            }
+            [$ok, $msg] = task_move_request($user, (int) ($_POST['id'] ?? 0), (string) ($_POST['status'] ?? ''));
+            if ($ok && $msg !== '') {
+                flash('success', $msg);
+            }
+            http_response_code($ok ? 200 : 403);
+            echo json_encode(['ok' => $ok, 'message' => $msg]);
+            exit;
+
+        case 'GET aufgaben/neu':
+        case 'POST aufgaben/neu':
+            $user = require_permission('tasks.create');
+            require APP_ROOT . '/src/pages/task_new.php';
+            break;
+
+        case 'GET aufgaben/aufgabe':
+        case 'POST aufgaben/aufgabe':
+            $user = require_login();
+            require APP_ROOT . '/src/pages/task.php';
+            break;
+
+        case 'GET lohnauftraege':
+            $user = require_login();
+            require APP_ROOT . '/src/pages/contracts.php';
+            break;
+
+        case 'GET lohnauftraege/neu':
+        case 'POST lohnauftraege/neu':
+        case 'GET lohnauftraege/auftrag':
+        case 'POST lohnauftraege/auftrag':
+            $user = require_login();
+            require APP_ROOT . '/src/pages/contract.php';
+            break;
+
         case 'GET downloads':
         case 'POST downloads':
             $user = require_permission('downloads.view');

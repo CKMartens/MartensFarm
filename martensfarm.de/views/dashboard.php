@@ -1,5 +1,5 @@
 <?php
-/** @var array $user @var ?array $snap @var ?array $lastOk @var array $players @var array $farms @var array $moneyHistory @var array $fleet @var array $repairs @var int $threshold @var array $pens @var int $animalCount @var array $penAlerts @var ?array $mfInfo @var array $tips @var ?array $finance */
+/** @var array $user @var ?array $snap @var ?array $lastOk @var array $players @var array $farms @var array $moneyHistory @var array $fleet @var array $repairs @var int $threshold @var array $pens @var int $animalCount @var array $penAlerts @var ?array $mfInfo @var array $tips @var ?array $finance @var array $myTasks @var int $freeTasks */
 // Server-Kachel: unterscheiden zwischen "Server antwortet", "Server antwortet nicht" und "wir haben länger nicht nachgesehen"
 $fetchAge = $snap ? time() - strtotime($snap['fetched_at']) : null;
 $stale = $fetchAge !== null && $fetchAge > 900;          // länger als 15 Minuten kein Abruf (Cron alle 5 Min.)
@@ -86,6 +86,24 @@ if (count($moneyHistory) >= 2) {
 </section>
 
 <div class="grid-2">
+    <section class="card">
+        <h2>Meine Aufgaben</h2>
+        <?php if ($myTasks): ?>
+            <ul class="plain">
+                <?php foreach ($myTasks as $t): $over = task_is_overdue($t); ?>
+                    <li><a href="<?= e(url('aufgaben/aufgabe?id=' . (int) $t['id'])) ?>"><?= e($t['title']) ?></a>
+                        <span class="badge"><?= e(TASK_STATUSES[$t['status']] ?? '') ?></span>
+                        <?php if ((int) $t['priority'] >= 3): ?><span class="badge <?= (int) $t['priority'] === 4 ? 'bad' : 'warn' ?>"><?= e(TASK_PRIORITIES[(int) $t['priority']]) ?></span><?php endif; ?>
+                        <?php if ($t['due_day'] !== null): ?><br><span class="small <?= $over ? 'bad' : 'muted' ?>">📅 <?= e(game_day_label((int) $t['due_day'])) ?></span><?php endif; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php else: ?>
+            <p class="muted">Dir ist gerade nichts zugewiesen.</p>
+        <?php endif; ?>
+        <p><?= $freeTasks ? '<span class="badge warn">' . (int) $freeTasks . ' offen, noch niemand dran</span> ' : '' ?><a href="<?= e(url('aufgaben')) ?>">Zum Board →</a></p>
+    </section>
+
     <section class="card">
         <h2>Kontostand – letzte 30 Tage</h2>
         <?= $spark ?: '<p class="muted">Noch zu wenig Daten. Der Verlauf füllt sich mit jedem Server-Save.</p>' ?>

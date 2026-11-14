@@ -32,6 +32,10 @@ if ($sgId !== null && finance_can_view($user, (int) $farmId)) {
     ];
 }
 
+// Aufgaben: meine offenen und wie viele auf dem Board noch frei sind
+$myTasks = tasks_open_for_user((int) $user['id']);
+$freeTasks = (int) q('SELECT COUNT(*) FROM tasks WHERE savegame_id <=> ? AND assignee_id IS NULL AND status IN (\'todo\', \'doing\') AND (farm_id = ? OR farm_id IS NULL)', [$sgId, $farmId])->fetchColumn();
+
 // Verkaufstipps: aktuelle Periode vs. Bestpreis
 $period = current_period_key();
 $tips = [];
@@ -44,4 +48,4 @@ foreach (['MILK', 'WHEAT', 'BARLEY', 'OAT', 'CANOLA', 'MAIZE', 'WOODCHIPS'] as $
     $tips[] = ['type' => $ft, 'now' => $period ? ($rows[$period] ?? null) : null, 'best' => max($rows), 'best_period' => $best];
 }
 
-render('dashboard', compact('user', 'snap', 'lastOk', 'players', 'farms', 'farmId', 'moneyHistory', 'fleet', 'repairs', 'threshold', 'pens', 'animalCount', 'penAlerts', 'mfInfo', 'tips', 'period', 'finance') + ['title' => 'Dashboard', 'nav' => 'dashboard']);
+render('dashboard', compact('user', 'snap', 'lastOk', 'players', 'farms', 'farmId', 'moneyHistory', 'fleet', 'repairs', 'threshold', 'pens', 'animalCount', 'penAlerts', 'mfInfo', 'tips', 'period', 'finance', 'myTasks', 'freeTasks') + ['title' => 'Dashboard', 'nav' => 'dashboard']);

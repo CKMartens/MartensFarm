@@ -60,6 +60,8 @@ const SUGGESTION_KINDS = [
     'vehicle_sale' => ['Fahrzeug verkauft', 'vehicle_sale'],
     'land_buy'     => ['Land gekauft', 'land_buy'],
     'land_sale'    => ['Land verkauft', 'field_sale'],
+    'contract_income' => ['Lohnauftrag erledigt', 'contract'],
+    'contract_cost'   => ['Lohnarbeit bezahlen', 'contract_cost'],
 ];
 
 function stat_name(string $stat): string

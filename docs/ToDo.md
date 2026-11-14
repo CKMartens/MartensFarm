@@ -15,7 +15,7 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | --- | --- | --- |
 | 1 | Grundlagen: Rollen und Rechte, Einstellungen | erledigt (0.3) |
 | 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | erledigt (0.4) |
-| 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben | mittel |
+| 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben und Lohnaufträge | erledigt (0.7) |
 | 4 | Fahrzeugverwaltung erweitern | klein |
 | 5 | Datenweg erweitern: Export-Mod für Tiere, Lager und Höfe 2–8 | erledigt (0.2) |
 | 6 | Downloadverwaltung | erledigt (0.6) |
@@ -51,25 +51,28 @@ Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert
   - Fahrzeug verschwindet (`removed_at`) → Verkauf
   - neues Fahrzeug → Kauf (Listenpreis)
   - Farmland-Besitzer wechselt in `stats.xml` → Landkauf/-verkauf
-  - [ ] Lohnauftrag erledigt → Einnahme (mit dem Lohnauftrag-Objekt in Paket 3)
+  - [x] Lohnauftrag erledigt → Einnahme (und Ausgabe beim Auftraggeber, wenn es ein Hof im Spiel ist)
 - [ ] Im echten Spiel prüfen: Kommen die Arten so an, wie erwartet (`bin/check-mod-export.php`, Abschnitt Finanzen)? Passt die Summe zur Kontostandsänderung?
 
-## 3. Aufgaben
+## 3. Aufgaben ✔
 
-Aufgaben manuell oder automatisch anlegen und an Mitspieler delegieren.
+Seite `/aufgaben` (0.7). Aufgaben manuell oder automatisch anlegen und an Mitspieler delegieren.
 
-- [ ] Kanban mit den Spalten Backlog, To Do, In Arbeit, Prüfung, Erledigt
-- [ ] Zuweisung an Mitglieder, Priorität, Fälligkeit (Spieltag), Verknüpfung mit Fahrzeug oder Feld
-- [ ] **Fahrzeugwartung automatisch**: Die Schwelle ist unter Einstellungen einstellbar, **Default 20 %** (Dashboard und Fuhrpark nutzen sie schon). Es gibt keine doppelten Aufgaben pro Fahrzeug, und die Aufgabe schließt sich, sobald repariert wurde.
-- [ ] **Tierpflege**: Die Hinweise gibt es schon (Seite Tiere und Dashboard: Futter, Wasser, Stroh, Produkte fast voll; Schwellen unter Einstellungen). Mit dem Board werden daraus automatische Aufgaben.
-- [ ] Drag & Drop mit externem JS, CSP-konform
+- [x] Kanban mit den Spalten Backlog, To Do, In Arbeit, Prüfung, Erledigt (plus „verworfen“ statt löschen)
+- [x] Zuweisung an Mitglieder, Priorität, Fälligkeit (Spieltag, angezeigt als Datum im Spielkalender), Verknüpfung mit Fahrzeug, Stall oder Feld
+- [x] Kommentare und Verlauf je Aufgabe, Kachel „Meine Aufgaben“ auf dem Dashboard
+- [x] **Fahrzeugwartung automatisch** ab der Schwelle (Default 20 %). Keine doppelten Aufgaben pro Fahrzeug, schließt sich nach der Reparatur.
+- [x] **Tierpflege automatisch** aus den Hinweisen (Futter, Wasser, Stroh, Produkte fast voll), eine pro Stall und Problem
+- [x] Drag & Drop mit externem JS (`assets/tasks.js`), CSP-konform, ohne JS über Knöpfe
+- [x] Einstellungen: Automatik an/aus, ob Spieler selbst abhaken dürfen oder erst „Prüfung“
+- [ ] Im echten Spiel prüfen: Kommen die Auto-Aufgaben zum richtigen Zeitpunkt und schließen sie sich nach dem Save?
 
-### Lohnaufträge (eigenes Objekt)
+### Lohnaufträge ✔
 
-Ein Lohnauftrag verbindet drei Dinge und bekommt deshalb ein eigenes Objekt:
-- [ ] Auftraggeber (Hof oder extern), Leistung, Feld, vereinbarter Preis, Status
-- [ ] erzeugt eine oder mehrere **Aufgaben**
-- [ ] erzeugt nach Abschluss eine **Einnahme-Buchung**
+Seite `/lohnauftraege`, eigenes Recht *Lohnaufträge verwalten*.
+- [x] Auftraggeber (Hof oder extern), Leistung, Feld, vereinbarter Preis, Fälligkeit, Status (angefragt, angenommen, erledigt, storniert)
+- [x] erzeugt eine oder mehrere **Aufgaben**; sind alle erledigt, ist der Auftrag erledigt
+- [x] erzeugt nach Abschluss einen **Buchungsvorschlag** (Einnahme, beim Hof-Auftraggeber zusätzlich Ausgabe)
 - [ ] später Grundlage für die **Rechnung zwischen Höfen** (Phase 3)
 
 ## 4. Fahrzeugverwaltung

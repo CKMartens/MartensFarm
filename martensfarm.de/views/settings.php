@@ -43,6 +43,16 @@
                 <label class="check-label"><input class="check" type="checkbox" name="hide_empty_pens" value="1"<?= setting_int('hide_empty_pens') === 1 ? ' checked' : '' ?>> Leere Ställe auf der Tiere-Seite ausblenden</label>
             </div>
         </section>
+
+        <section class="card">
+            <h2>Aufgaben</h2>
+            <div class="stack">
+                <label class="check-label"><input class="check" type="checkbox" name="tasks_auto_repair" value="1"<?= setting_int('tasks_auto_repair') === 1 ? ' checked' : '' ?>> Werkstatt-Aufgaben automatisch anlegen (ab der Schwelle oben)</label>
+                <label class="check-label"><input class="check" type="checkbox" name="tasks_auto_animals" value="1"<?= setting_int('tasks_auto_animals') === 1 ? ' checked' : '' ?>> Tierpflege-Aufgaben automatisch anlegen (Futter, Wasser, Stroh, Produkte voll)</label>
+                <label class="check-label"><input class="check" type="checkbox" name="tasks_review_required" value="1"<?= setting_int('tasks_review_required') === 1 ? ' checked' : '' ?>> Fertige Aufgaben erst prüfen: Abhaken darf nur, wer Aufgaben verteilt</label>
+                <p class="muted small">Automatische Aufgaben schließen sich von selbst, sobald der nächste Save zeigt, dass alles wieder passt.</p>
+            </div>
+        </section>
     </div>
     <p><button class="btn btn-primary" type="submit">Speichern</button></p>
 </form>

@@ -11,6 +11,7 @@ Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im 
 - Preise vom Server mit bestem und schlechtestem Monat
 - Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4)
 - Downloads: Mods, die nicht im ModHub sind, für die Mitspieler; Server-Liste automatisch aus dem Stats-Feed (ab 0.6)
+- Aufgaben-Board mit automatischen Werkstatt- und Tierpflege-Aufgaben, Lohnaufträge mit Buchungsvorschlag (ab 0.7)
 
 ---
 
@@ -221,9 +222,31 @@ So funktioniert's:
   „Server hat neuere Version“, bis die neue ZIP hochgeladen ist.
 - **Rechte:** *Mods herunterladen* für die Seite, *Downloads verwalten* für Upload, Löschen, Ausblenden, Hinweise/Changelog und die Download-Zahlen.
 
+### Update auf 0.7 (Aufgaben und Lohnaufträge)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt). Neu ist u. a. `public/assets/tasks.js`.
+2. `keyhelp-php85 bin/update-db.php` ausführen. Legt `tasks`, `task_events` und `contracts` an, den Buchungssatz
+   **Lohnarbeit (Fremdleistung)** und gibt dem Farmmanager einmalig das neue Recht **Lohnaufträge verwalten**.
+
+So funktioniert's:
+- **Board** unter `/aufgaben` mit Backlog, To Do, In Arbeit, Prüfung, Erledigt. Karten per Drag & Drop verschieben
+  (ohne JavaScript bzw. am Handy über die Pfeil-Knöpfe). Pro Aufgabe: Hof, Zuweisung, Priorität, Fälligkeit im
+  Spielkalender, optional Bezug auf Fahrzeug, Stall oder Feld, dazu Kommentare und Verlauf.
+- **Rechte:** *Aufgaben anlegen* (neue Aufgaben, eigene bearbeiten/verwerfen), *Aufgaben bearbeiten* (offene übernehmen,
+  eigene bis „Prüfung“ schieben, kommentieren), *Aufgaben verteilen* (zuweisen, alles verschieben, abhaken).
+  Gäste sehen das Board nur. Ob Spieler selbst abhaken dürfen, steht unter Einstellungen → Aufgaben.
+- **Automatisch** (bei jedem Import, abschaltbar unter Einstellungen): Fahrzeug ab der Werkstatt-Schwelle und jeder
+  Tierpflege-Hinweis (Futter, Wasser, Stroh, Produkt fast voll) werden zu einer Aufgabe, pro Fahrzeug bzw. Stall und Problem
+  nur eine. Sie schließt sich selbst, sobald der nächste Save zeigt, dass es behoben ist. Hakt jemand sie vorher ab,
+  kommt sie erst nach dem nächsten Save wieder, falls das Problem dann noch besteht.
+- **Fälligkeit:** Spieltag aus der Export-Mod. Zwischen zwei Saves zählt die App den Tag über die Uhrzeit des Servers weiter.
+- **Lohnaufträge** unter `/lohnauftraege`: Auftraggeber (Hof im Spiel oder extern), Leistung, Feld, Preis, Fälligkeit.
+  Daraus eine oder mehrere Aufgaben. Sind alle erledigt (oder hakt man den Auftrag ab), entsteht unter Finanzen ein
+  Vorschlag *Lohnauftrag erledigt* (Einnahme beim eigenen Hof) und, wenn der Auftraggeber ein Hof im Spiel ist,
+  *Lohnarbeit bezahlen* (Ausgabe beim Auftraggeber). Die App führt nur Buch, im Spiel fließt kein Geld.
+
 ---
 
 ## Nächste Phasen
 
-- **Phase 2:** Lohnaufträge als eigenes Objekt (Aufgabe + Einnahme), Aufgaben-Board (Kanban), automatische Werkstatt-Aufgaben, Felder
 - **Phase 3:** Rechnungen zwischen Höfen, Karte mit Fahrzeugpositionen, Discord-Webhook

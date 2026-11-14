@@ -99,6 +99,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     setting_set('hide_empty_pens', isset($_POST['hide_empty_pens']) ? '1' : '0');
+    foreach (['tasks_auto_repair', 'tasks_auto_animals', 'tasks_review_required'] as $key) {
+        setting_set($key, isset($_POST[$key]) ? '1' : '0');
+    }
 
     flash('success', 'Einstellungen gespeichert.');
     redirect('admin/einstellungen');
