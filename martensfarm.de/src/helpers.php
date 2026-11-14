@@ -146,7 +146,3 @@ function filltype_name(string $type): string
 {
     return FILLTYPE_NAMES[$type] ?? ucfirst(strtolower(str_replace('_', ' ', $type)));
 }
-
-const ROLE_NAMES = [
-    'admin' => 'Admin', 'hofleiter' => 'Hofleiter', 'mitarbeiter' => 'Mitarbeiter', 'gast' => 'Gast',
-];

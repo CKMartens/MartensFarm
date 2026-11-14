@@ -13,7 +13,7 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 
 | # | Paket | Umfang |
 | --- | --- | --- |
-| 1 | Grundlagen: Rollennamen, Einstellungen | klein |
+| 1 | Grundlagen: Rollen und Rechte, Einstellungen | erledigt (0.3) |
 | 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | mittel |
 | 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben | mittel |
 | 4 | Fahrzeugverwaltung erweitern | klein |
@@ -22,17 +22,19 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 
 ---
 
-## 1. Userverwaltung
+## 1. Userverwaltung ✔
 
 Ist schon da: Unter `/admin/nutzer` kann man anlegen, bearbeiten und de-/aktivieren. Nur der Admin legt Nutzer an, offenes Registrieren gibt es nicht.
 
-- [ ] Rollen in der Oberfläche umbenennen, intern bleiben die Schlüssel gleich:
+- [x] Rollen in der Oberfläche umbenennen, intern bleiben die Schlüssel gleich:
   - `admin` → **Admin**
   - `hofleiter` → **Farmmanager**
   - `mitarbeiter` → **Spieler**
   - `gast` → **Gast** (nur lesen)
-- [ ] Rechte statt fest verdrahteter Rollenprüfungen: Jede Rolle ist ein Bündel von Rechten (z. B. `tasks.assign`, `finance.book`, `admin.settings`). Neue Funktionen fragen Rechte ab, nicht Rollen.
-- [ ] **Deaktivieren statt löschen.** Aufgaben, Buchungen und Verläufe behalten ihren Urheber. Wenn wirklich gelöscht werden muss, dann nur anonymisieren (Name/E-Mail entfernen).
+- [x] Rechte statt fest verdrahteter Rollenprüfungen: Jede Rolle ist ein Bündel von Rechten (z. B. `tasks.assign`, `finance.book`, `admin.settings`). Neue Funktionen fragen Rechte ab, nicht Rollen.
+- [x] **Deaktivieren statt löschen.** Aufgaben, Buchungen und Verläufe behalten ihren Urheber. Wenn wirklich gelöscht werden muss, dann nur anonymisieren (Name/E-Mail entfernen).
+- [x] Seite **Rollen & Rechte** unter Verwaltung: Matrix, Rollen umbenennen, eigene Rollen anlegen und löschen
+- [ ] Später, mit den Finanzen: hofbezogene Rechte (z. B. Farmmanager nur für den eigenen Hof)
 
 ## 2. Finanzen
 

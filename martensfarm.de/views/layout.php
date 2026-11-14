@@ -26,7 +26,7 @@ $items = [
         <?php if ($u): ?>
             <div class="farm-chip">
                 <div class="farm-chip-name"><?= e($u['farm_name'] ?? 'Kein Hof zugeordnet') ?></div>
-                <div class="farm-chip-sub"><?= e($u['nickname']) ?> · <?= e(ROLE_NAMES[$u['role']] ?? $u['role']) ?></div>
+                <div class="farm-chip-sub"><?= e($u['nickname']) ?> · <?= e(role_name($u['role'])) ?></div>
             </div>
             <nav>
                 <div class="nav-title">Betrieb</div>
@@ -36,10 +36,17 @@ $items = [
                 <div class="nav-title">Organisation</div>
                 <span class="nav-item disabled" title="Kommt in Phase 2"><span class="nav-icon">☑</span>Aufgaben</span>
                 <span class="nav-item disabled" title="Kommt in Phase 3"><span class="nav-icon">🧾</span>Rechnungen</span>
-                <?php if (has_role($u, 'admin')): ?>
+                <?php if (can_any($u, ['admin.users', 'admin.roles', 'admin.settings'])): ?>
                     <div class="nav-title">Verwaltung</div>
-                    <a class="nav-item<?= $nav === 'nutzer' ? ' active' : '' ?>" href="<?= e(url('admin/nutzer')) ?>"><span class="nav-icon">👥</span>Nutzer &amp; Höfe</a>
-                    <a class="nav-item<?= $nav === 'einstellungen' ? ' active' : '' ?>" href="<?= e(url('admin/einstellungen')) ?>"><span class="nav-icon">⚙</span>Einstellungen</a>
+                    <?php if (can($u, 'admin.users')): ?>
+                        <a class="nav-item<?= $nav === 'nutzer' ? ' active' : '' ?>" href="<?= e(url('admin/nutzer')) ?>"><span class="nav-icon">👥</span>Nutzer &amp; Höfe</a>
+                    <?php endif; ?>
+                    <?php if (can($u, 'admin.roles')): ?>
+                        <a class="nav-item<?= $nav === 'rollen' ? ' active' : '' ?>" href="<?= e(url('admin/rollen')) ?>"><span class="nav-icon">🔑</span>Rollen &amp; Rechte</a>
+                    <?php endif; ?>
+                    <?php if (can($u, 'admin.settings')): ?>
+                        <a class="nav-item<?= $nav === 'einstellungen' ? ' active' : '' ?>" href="<?= e(url('admin/einstellungen')) ?>"><span class="nav-icon">⚙</span>Einstellungen</a>
+                    <?php endif; ?>
                 <?php endif; ?>
             </nav>
             <form method="post" action="<?= e(url('logout')) ?>" class="logout">

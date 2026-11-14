@@ -53,23 +53,7 @@ function require_login(): array
     return $user;
 }
 
-const ROLE_RANK = ['gast' => 1, 'mitarbeiter' => 2, 'hofleiter' => 3, 'admin' => 4];
-
-function has_role(array $user, string $minRole): bool
-{
-    return (ROLE_RANK[$user['role']] ?? 0) >= (ROLE_RANK[$minRole] ?? 99);
-}
-
-function require_role(string $minRole): array
-{
-    $user = require_login();
-    if (!has_role($user, $minRole)) {
-        http_response_code(403);
-        render('error', ['title' => 'Kein Zugriff', 'message' => 'Dafür fehlt dir die Berechtigung.']);
-        exit;
-    }
-    return $user;
-}
+// Rechte prüfen: siehe src/permissions.php (can, require_permission)
 
 /**
  * Anmelde-Mail anfordern. Gibt immer "ok" zurück, damit niemand herausfinden kann,

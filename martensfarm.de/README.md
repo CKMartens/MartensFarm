@@ -5,7 +5,7 @@ Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im 
 
 **Phase 1 enthält:**
 - Anmeldung ohne Passwort: Link plus 6-stelliger Code per E-Mail
-- Nutzerverwaltung mit Rollen (Admin, Hofleiter, Mitarbeiter, Gast) und Hofzuordnung
+- Nutzerverwaltung mit Hofzuordnung, Rollen (Admin, Farmmanager, Spieler, Gast) und frei einstellbaren Rechten
 - Dashboard: Server online, Spieler, Uhrzeit im Spiel, Kontostand mit Verlauf, fällige Reparaturen, Verkaufstipps
 - Fuhrpark mit Schaden, Stunden, Füllständen und Verkaufshistorie
 - Preise vom Server mit bestem und schlechtestem Monat
@@ -158,6 +158,16 @@ Welche Höfe zählen, wie sie heißen und ab wann es Hinweise gibt, stellt der A
 4. `keyhelp-php85 bin/check-mod-export.php` zeigt, was ankommt. Danach unter **Einstellungen** die Höfe prüfen.
 
 Die Savegame-Feeds ändern sich nur, wenn der Server speichert (Autosave bzw. manuell).
+
+### Update auf 0.3 (Rollen & Rechte)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Legt `roles` und `role_permissions` an, macht aus `users.role` einen Verweis auf die Rollen und erlaubt leere E-Mails (für anonymisierte Nutzer).
+3. Unter **Verwaltung → Rollen & Rechte** die Häkchen prüfen.
+
+Rollen sind jetzt Bündel von Rechten. Der Code fragt nur Rechte ab (`can($user, 'finance.book')`), der Katalog steht in `src/permissions.php`.
+Die Rolle `admin` darf immer alles. Der letzte aktive Admin kann weder gesperrt noch herabgestuft werden.
+Nutzer werden gesperrt statt gelöscht. Gesperrte Nutzer lassen sich anonymisieren (Name, E-Mail und Hof weg, Nickname bleibt).
 
 ---
 

@@ -6,7 +6,7 @@
         <h1>Preise auf dem Server</h1>
         <p class="muted">Pro 1.000 Liter, aus dem Spielstand<?= $period ? ' · aktueller Spielmonat: ' . e(period_name($period)) : '' ?></p>
     </div>
-    <?php if (has_role($user, 'hofleiter')): ?>
+    <?php if (can($user, 'game.calendar')): ?>
         <form method="post" action="<?= e(url('preise')) ?>" class="inline">
             <?= csrf_field() ?>
             <select name="period" aria-label="Aktueller Spielmonat">

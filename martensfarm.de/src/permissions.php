@@ -1,0 +1,104 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Rollen und Rechte.
+ *
+ * Die Rechte stehen hier im Code, weil jede Funktion genau weiß, welches Recht sie prüft.
+ * Welche Rolle welche Rechte hat, steht in der Datenbank (roles, role_permissions) und
+ * wird unter „Rollen & Rechte“ gepflegt. Neue Rollen sind damit reine Konfiguration.
+ *
+ * Neue Funktionen fragen immer ein Recht ab, nie eine Rolle:  can($user, 'finance.book')
+ */
+
+/** Schlüssel der Rolle, die immer alles darf (lässt sich nicht aussperren) */
+const ADMIN_ROLE = 'admin';
+
+/** Rechte-Katalog: Schlüssel => [Gruppe, Bezeichnung, Erklärung] */
+const PERMISSIONS = [
+    'admin.users'    => ['Verwaltung', 'Nutzer & Höfe verwalten', 'Nutzer anlegen, bearbeiten, sperren, Höfe umbenennen'],
+    'admin.roles'    => ['Verwaltung', 'Rollen & Rechte verwalten', 'Wer das darf, kann sich selbst weitere Rechte geben'],
+    'admin.settings' => ['Verwaltung', 'Einstellungen ändern', 'Höfe, Schwellen, Savegame und „Jetzt abrufen“'],
+    'game.calendar'  => ['Spiel', 'Spielmonat setzen', 'Monat und Tag auf der Preise-Seite einstellen'],
+    'finance.view'   => ['Finanzen', 'Finanzen sehen', 'Kassenbuch und Abgleich ansehen (kommt mit dem Finanz-Paket)'],
+    'finance.book'   => ['Finanzen', 'Buchen', 'Einnahmen und Ausgaben erfassen (kommt mit dem Finanz-Paket)'],
+    'tasks.create'   => ['Aufgaben', 'Aufgaben anlegen', 'Neue Aufgaben aufs Board stellen (kommt mit dem Aufgaben-Board)'],
+    'tasks.assign'   => ['Aufgaben', 'Aufgaben verteilen', 'Aufgaben anderen zuweisen (kommt mit dem Aufgaben-Board)'],
+    'tasks.work'     => ['Aufgaben', 'Aufgaben bearbeiten', 'Eigene Aufgaben übernehmen und abschließen (kommt mit dem Aufgaben-Board)'],
+];
+
+/** Alle Rollen, sortiert: role_key => Zeile */
+function roles_all(bool $refresh = false): array
+{
+    static $roles = null;
+    if ($roles === null || $refresh) {
+        $roles = [];
+        foreach (q('SELECT * FROM roles ORDER BY sort_order, name')->fetchAll() as $r) {
+            $roles[$r['role_key']] = $r;
+        }
+    }
+    return $roles;
+}
+
+function role_name(?string $key): string
+{
+    return roles_all()[$key]['name'] ?? (string) $key;
+}
+
+/** Rechte einer Rolle als Liste von Schlüsseln */
+function role_permissions(string $role, bool $refresh = false): array
+{
+    static $cache = null;
+    if ($cache === null || $refresh) {
+        $cache = [];
+        foreach (q('SELECT role_key, permission FROM role_permissions')->fetchAll() as $r) {
+            $cache[$r['role_key']][] = $r['permission'];
+        }
+    }
+    if ($role === ADMIN_ROLE) {
+        return array_keys(PERMISSIONS);
+    }
+    return array_values(array_intersect($cache[$role] ?? [], array_keys(PERMISSIONS)));
+}
+
+function is_admin(?array $user): bool
+{
+    return $user !== null && ($user['role'] ?? '') === ADMIN_ROLE;
+}
+
+/** Darf der Nutzer das? Unbekannte Rechte sind immer verboten (Tippfehler fallen so auf). */
+function can(?array $user, string $permission): bool
+{
+    if ($user === null || !isset(PERMISSIONS[$permission])) {
+        return false;
+    }
+    return in_array($permission, role_permissions((string) $user['role']), true);
+}
+
+/** Mindestens eines der Rechte? (z. B. für den Menüblock „Verwaltung“) */
+function can_any(?array $user, array $permissions): bool
+{
+    foreach ($permissions as $p) {
+        if (can($user, $p)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function require_permission(string $permission): array
+{
+    $user = require_login();
+    if (!can($user, $permission)) {
+        http_response_code(403);
+        render('error', ['title' => 'Kein Zugriff', 'message' => 'Dafür fehlt dir die Berechtigung.']);
+        exit;
+    }
+    return $user;
+}
+
+/** Anzahl aktiver Admins (der letzte darf weder gesperrt noch herabgestuft werden) */
+function active_admin_count(): int
+{
+    return (int) q('SELECT COUNT(*) FROM users WHERE role = ? AND is_active = 1', [ADMIN_ROLE])->fetchColumn();
+}

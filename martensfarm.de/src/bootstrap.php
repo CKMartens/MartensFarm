@@ -22,6 +22,7 @@ if (config('app.debug', false)) {
 require APP_ROOT . '/src/helpers.php';
 require APP_ROOT . '/src/db.php';
 require APP_ROOT . '/src/auth.php';
+require APP_ROOT . '/src/permissions.php';
 require APP_ROOT . '/src/mailer.php';
 require APP_ROOT . '/src/gamedata.php';
 require APP_ROOT . '/src/farmdata.php';

@@ -1,5 +1,5 @@
 <?php
-/** @var array $users @var array $farms @var array $errors @var ?array $edit @var array $old */
+/** @var array $users @var array $farms @var array $errors @var ?array $edit @var array $old @var array $roles @var array $roleChoices @var string $filter @var array $counts @var bool $isAdmin */
 $form = $errors ? $old : ($edit ?: []);
 $isEdit = !empty($form['id']);
 ?>
@@ -26,8 +26,8 @@ $isEdit = !empty($form['id']);
             <label>E-Mail <input type="email" name="email" required maxlength="190" value="<?= e($form['email'] ?? '') ?>"></label>
             <label>Rolle
                 <select name="role">
-                    <?php foreach (ROLE_NAMES as $key => $label): ?>
-                        <option value="<?= e($key) ?>"<?= ($form['role'] ?? 'mitarbeiter') === $key ? ' selected' : '' ?>><?= e($label) ?></option>
+                    <?php foreach ($roleChoices as $key => $r): ?>
+                        <option value="<?= e($key) ?>"<?= ($form['role'] ?? 'mitarbeiter') === $key ? ' selected' : '' ?>><?= e($r['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
             </label>
@@ -44,8 +44,29 @@ $isEdit = !empty($form['id']);
                 <?php if ($isEdit): ?><a class="btn btn-ghost" href="<?= e(url('admin/nutzer')) ?>">Abbrechen</a><?php endif; ?>
             </div>
         </form>
-        <p class="muted small">Rollen: <b>Admin</b> darf alles · <b>Hofleiter</b> verwaltet seinen Hof · <b>Mitarbeiter</b> arbeitet Aufgaben ab · <b>Gast</b> darf nur schauen.</p>
+        <ul class="plain small muted">
+            <?php foreach ($roleChoices as $r): ?>
+                <li><b><?= e($r['name']) ?></b>: <?= e($r['description'] ?: '–') ?></li>
+            <?php endforeach; ?>
+        </ul>
+        <?php if (can($user, 'admin.roles')): ?>
+            <p class="small"><a href="<?= e(url('admin/rollen')) ?>">Rollen &amp; Rechte anpassen</a></p>
+        <?php endif; ?>
     </section>
+
+    <?php if ($edit && (int) $edit['is_active'] === 0 && $edit['email'] !== null && (int) $edit['id'] !== (int) $user['id']): ?>
+    <section class="card">
+        <h2>Anonymisieren</h2>
+        <p class="muted small">Entfernt Name, E-Mail und Hofzuordnung von <b><?= e($edit['nickname']) ?></b>. Der Nickname bleibt, damit Buchungen und Aufgaben weiter zugeordnet sind. Das lässt sich nicht rückgängig machen.</p>
+        <form method="post" action="<?= e(url('admin/nutzer')) ?>" class="stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="anonymize">
+            <input type="hidden" name="id" value="<?= (int) $edit['id'] ?>">
+            <label class="check-label"><input class="check" type="checkbox" name="confirm" value="1" required> Ja, persönliche Daten endgültig entfernen</label>
+            <div class="row"><button class="btn btn-ghost" type="submit">Anonymisieren</button></div>
+        </form>
+    </section>
+    <?php endif; ?>
 
     <section class="card">
         <h2>Höfe</h2>
@@ -66,7 +87,14 @@ $isEdit = !empty($form['id']);
 </div>
 
 <section class="card">
-    <h2>Alle Nutzer</h2>
+    <div class="page-head">
+        <h2>Nutzer</h2>
+        <div class="row">
+            <?php foreach (['aktiv' => 'Aktiv', 'gesperrt' => 'Gesperrt', 'alle' => 'Alle'] as $key => $label): ?>
+                <a class="btn btn-sm <?= $filter === $key ? 'btn-primary' : 'btn-ghost' ?>" href="<?= e(url('admin/nutzer?zeigen=' . $key)) ?>"><?= e($label) ?> (<?= (int) ($counts[$key] ?? 0) ?>)</a>
+            <?php endforeach; ?>
+        </div>
+    </div>
     <div class="table-wrap">
     <table class="table">
         <thead><tr><th>Nickname</th><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Hof</th><th>Letzte Anmeldung</th><th></th></tr></thead>
@@ -75,11 +103,12 @@ $isEdit = !empty($form['id']);
             <tr class="<?= $u['is_active'] ? '' : 'inactive' ?>">
                 <td><strong><?= e($u['nickname']) ?></strong></td>
                 <td><?= e($u['name']) ?></td>
-                <td><?= e($u['email']) ?></td>
-                <td><?= e(ROLE_NAMES[$u['role']] ?? $u['role']) ?></td>
+                <td><?= $u['email'] !== null ? e($u['email']) : '<span class="muted">anonymisiert</span>' ?></td>
+                <td><?= e(role_name($u['role'])) ?></td>
                 <td><?= e($u['farm_name'] ?? '–') ?></td>
                 <td><?= e(fmt_datetime($u['last_login_at'])) ?></td>
                 <td class="actions">
+                    <?php if ($isAdmin || $u['role'] !== ADMIN_ROLE): ?>
                     <a class="btn btn-ghost btn-sm" href="<?= e(url('admin/nutzer?bearbeiten=' . (int) $u['id'])) ?>">Bearbeiten</a>
                     <form method="post" action="<?= e(url('admin/nutzer')) ?>" class="inline">
                         <?= csrf_field() ?>
@@ -87,9 +116,11 @@ $isEdit = !empty($form['id']);
                         <input type="hidden" name="id" value="<?= (int) $u['id'] ?>">
                         <button class="btn btn-ghost btn-sm" type="submit"><?= $u['is_active'] ? 'Sperren' : 'Freigeben' ?></button>
                     </form>
+                    <?php endif; ?>
                 </td>
             </tr>
         <?php endforeach; ?>
+        <?php if (!$users): ?><tr><td colspan="7" class="muted">Keine Nutzer in dieser Ansicht.</td></tr><?php endif; ?>
         </tbody>
     </table>
     </div>
