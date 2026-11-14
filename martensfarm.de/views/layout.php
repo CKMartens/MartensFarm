@@ -6,6 +6,8 @@ $appName = (string) config('app.name', 'MartensFarm');
 $items = [
     'dashboard' => ['', 'Dashboard', '▦'],
     'fuhrpark'  => ['fuhrpark', 'Fuhrpark', '🚜'],
+    'tiere'     => ['tiere', 'Tiere', '🐄'],
+    'lager'     => ['lager', 'Lager', '🌾'],
     'preise'    => ['preise', 'Preise', '€'],
 ];
 ?><!doctype html>
@@ -37,6 +39,7 @@ $items = [
                 <?php if (has_role($u, 'admin')): ?>
                     <div class="nav-title">Verwaltung</div>
                     <a class="nav-item<?= $nav === 'nutzer' ? ' active' : '' ?>" href="<?= e(url('admin/nutzer')) ?>"><span class="nav-icon">👥</span>Nutzer &amp; Höfe</a>
+                    <a class="nav-item<?= $nav === 'einstellungen' ? ' active' : '' ?>" href="<?= e(url('admin/einstellungen')) ?>"><span class="nav-icon">⚙</span>Einstellungen</a>
                 <?php endif; ?>
             </nav>
             <form method="post" action="<?= e(url('logout')) ?>" class="logout">

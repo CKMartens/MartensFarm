@@ -1,6 +1,6 @@
 <?php
-/** @var array $farms @var int $farmId @var array $grouped @var array $removed @var int $total @var array $vehicles */
-$damageClass = fn(?float $d) => $d === null ? '' : ($d >= 0.30 ? 'bad' : ($d >= 0.15 ? 'warn' : 'ok'));
+/** @var array $farms @var int $farmId @var array $grouped @var array $removed @var int $total @var array $vehicles @var float $threshold */
+$damageClass = fn(?float $d) => $d === null ? '' : ($d >= min(1, $threshold + 0.1) ? 'bad' : ($d >= $threshold ? 'warn' : 'ok'));
 ?>
 <header class="page-head">
     <div>

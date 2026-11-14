@@ -62,7 +62,7 @@ Das Repo ist **öffentlich**. Deshalb:
 
 ## Roadmap
 
-- **Phase 2:** Aufgaben-Board (Kanban) mit automatischen Werkstatt-Aufgaben ab 15 % Schaden, Felderseite aus `stats.xml`
+- **Phase 2:** Aufgaben-Board (Kanban) mit automatischen Werkstatt-Aufgaben ab 20 % Schaden (einstellbar), Felderseite aus `stats.xml`
 - **Phase 3:** Rechnungen zwischen Höfen, Karte mit Fahrzeugpositionen, Discord-Webhook
 - **Später:** getrennte Kontostände für mehrere Höfe (braucht anderen Datenweg, z. B. Mod oder FTP auf `farms.xml`)
 

@@ -228,12 +228,23 @@ function run_import(bool $force = false): array
         }
     }
 
-    // 3) careerSavegame – Fallback für das Geld, falls farms.xml nicht abrufbar ist
+    // 3) careerSavegame: Savegame erkennen, Block der Export-Mod einlesen, sonst Geld von Hof 1 als Notbehelf
     if (in_array('careerSavegame', $files, true)) {
         try {
             $career = gs_savegame('careerSavegame');
             setting_set('savegame_name', (string) $career->settings->savegameName);
             setting_set('days_per_period', (string) $career->settings->plannedDaysPerPeriod);
+            $mf = isset($career->martensFarm) ? parse_mf_export($career->martensFarm) : null;
+            $sgId = savegame_detect(
+                (string) ($mf['game']['map_id'] ?? '') ?: (string) $career->settings->mapId ?: (string) $stats['map_name'],
+                (string) ($mf['game']['map_title'] ?? '') ?: (string) $career->settings->mapTitle,
+                (string) $career->settings->savegameName,
+                $now,
+                $log
+            );
+            if ($mf !== null) {
+                $farmsSeen = import_mf_export($mf, $sgId, $now, $log) || $farmsSeen;
+            }
             if (!$farmsSeen && isset($career->statistics->money)) {
                 $existing = q('SELECT name FROM farms WHERE farm_id = 1')->fetchColumn();
                 upsert_farm(1, $existing ?: (string) $career->settings->savegameName, null, (int) round((float) $career->statistics->money), null, $now);
@@ -242,6 +253,7 @@ function run_import(bool $force = false): array
             $log[] = 'careerSavegame: ' . $e->getMessage();
         }
     }
+    $sgId = current_savegame_id();
 
     // 4) Fahrzeuge – Namen aus dem Stats-Feed über die Position zuordnen
     if (in_array('vehicles', $files, true)) {
@@ -260,13 +272,13 @@ function run_import(bool $force = false): array
                 }
                 $key = sprintf('%.1f|%.1f', $v['x'], $v['z']);
                 $sv = $names[$key] ?? null;
-                q('INSERT INTO vehicles (unique_id, farm_id, name, category, filename, property_state, age_months, operating_hours, price, damage, wear, fills, pos_x, pos_z, is_ai_active, first_seen_at, last_seen_at, removed_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
-                   ON DUPLICATE KEY UPDATE farm_id = VALUES(farm_id), name = VALUES(name), category = COALESCE(VALUES(category), category),
+                q('INSERT INTO vehicles (unique_id, savegame_id, farm_id, name, category, filename, property_state, age_months, operating_hours, price, damage, wear, fills, pos_x, pos_z, is_ai_active, first_seen_at, last_seen_at, removed_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                   ON DUPLICATE KEY UPDATE savegame_id = VALUES(savegame_id), farm_id = VALUES(farm_id), name = VALUES(name), category = COALESCE(VALUES(category), category),
                      property_state = VALUES(property_state), age_months = VALUES(age_months), operating_hours = VALUES(operating_hours),
                      price = VALUES(price), damage = VALUES(damage), wear = VALUES(wear), fills = VALUES(fills), pos_x = VALUES(pos_x),
                      pos_z = VALUES(pos_z), is_ai_active = VALUES(is_ai_active), last_seen_at = VALUES(last_seen_at), removed_at = NULL', [
-                    $v['unique_id'], $v['farm_id'], $sv['name'] ?? vehicle_name_from_file($v['filename']), $sv['category'] ?? null,
+                    $v['unique_id'], $sgId, $v['farm_id'], $sv['name'] ?? vehicle_name_from_file($v['filename']), $sv['category'] ?? null,
                     mb_substr($v['filename'], 0, 255), $v['property_state'], $v['age'], $v['hours'], $v['price'],
                     $v['damage'], $v['wear'], json_encode($v['fills']), $v['x'], $v['z'], (int) ($sv['ai'] ?? false), $now, $now,
                 ]);
@@ -274,7 +286,7 @@ function run_import(bool $force = false): array
                 $count++;
             }
             // Nicht mehr vorhandene Fahrzeuge als verkauft/entfernt markieren
-            q('UPDATE vehicles SET removed_at = ? WHERE last_seen_at < ? AND removed_at IS NULL', [$now, $now]);
+            q('UPDATE vehicles SET removed_at = ? WHERE savegame_id <=> ? AND last_seen_at < ? AND removed_at IS NULL', [$now, $sgId, $now]);
             $log[] = "Fuhrpark: {$count} Fahrzeuge.";
         } catch (Throwable $e) {
             $log[] = 'vehicles: ' . $e->getMessage();
@@ -321,14 +333,16 @@ function run_import(bool $force = false): array
 
 function upsert_farm(int $farmId, string $name, ?int $color, ?int $money, ?int $loan, string $now): void
 {
+    // Vom Admin vergebene Namen (name_locked) bleiben stehen
     q('INSERT INTO farms (farm_id, name, color, money, loan, updated_at) VALUES (?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE name = VALUES(name), color = COALESCE(VALUES(color), color), money = COALESCE(VALUES(money), money),
+       ON DUPLICATE KEY UPDATE name = IF(name_locked = 1, name, VALUES(name)), color = COALESCE(VALUES(color), color), money = COALESCE(VALUES(money), money),
          loan = COALESCE(VALUES(loan), loan), updated_at = VALUES(updated_at)', [$farmId, $name !== '' ? $name : "Hof {$farmId}", $color, $money, $loan, $now]);
     if ($money !== null) {
         // Verlauf: höchstens ein Punkt pro Stunde, sonst wird die Tabelle unnötig groß
-        $lastHour = q('SELECT COUNT(*) FROM farm_money_history WHERE farm_id = ? AND fetched_at > NOW() - INTERVAL 1 HOUR', [$farmId])->fetchColumn();
+        $sgId = current_savegame_id();
+        $lastHour = q('SELECT COUNT(*) FROM farm_money_history WHERE farm_id = ? AND savegame_id <=> ? AND fetched_at > NOW() - INTERVAL 1 HOUR', [$farmId, $sgId])->fetchColumn();
         if ((int) $lastHour === 0) {
-            q('INSERT INTO farm_money_history (farm_id, fetched_at, money) VALUES (?, ?, ?)', [$farmId, $now, $money]);
+            q('INSERT INTO farm_money_history (farm_id, savegame_id, fetched_at, money) VALUES (?, ?, ?, ?)', [$farmId, $sgId, $now, $money]);
         }
     }
 }
