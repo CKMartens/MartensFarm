@@ -44,3 +44,6 @@ desktop.ini
 # Composer / Node (falls später genutzt)
 vendor/
 node_modules/
+
+# Ausnahme: Icon unserer eigenen Mod
+!mod/FS25_MartensFarmExport/icon_MartensFarmExport.dds
