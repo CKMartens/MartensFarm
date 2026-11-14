@@ -82,6 +82,18 @@ try {
             require APP_ROOT . '/src/pages/storage.php';
             break;
 
+        case 'GET finanzen':
+        case 'POST finanzen':
+            $user = require_permission('finance.view');
+            require APP_ROOT . '/src/pages/finance.php';
+            break;
+
+        case 'GET finanzen/buchen':
+        case 'POST finanzen/buchen':
+            $user = require_permission('finance.book');
+            require APP_ROOT . '/src/pages/finance_book.php';
+            break;
+
         case 'GET karte.jpg':
             // Kartenbild vom Gameserver, über die App ausgeliefert: Adresse und Code bleiben auf dem Server
             require_login();
@@ -129,6 +141,12 @@ try {
         case 'POST admin/einstellungen':
             $user = require_permission('admin.settings');
             require APP_ROOT . '/src/pages/settings.php';
+            break;
+
+        case 'GET admin/buchungssaetze':
+        case 'POST admin/buchungssaetze':
+            $user = require_permission('finance.manage');
+            require APP_ROOT . '/src/pages/booking_categories.php';
             break;
 
         case 'POST admin/import':

@@ -1,5 +1,5 @@
 <?php
-/** @var array $user @var ?array $snap @var ?array $lastOk @var array $players @var array $farms @var array $moneyHistory @var array $fleet @var array $repairs @var int $threshold @var array $pens @var int $animalCount @var array $penAlerts @var ?array $mfInfo @var array $tips */
+/** @var array $user @var ?array $snap @var ?array $lastOk @var array $players @var array $farms @var array $moneyHistory @var array $fleet @var array $repairs @var int $threshold @var array $pens @var int $animalCount @var array $penAlerts @var ?array $mfInfo @var array $tips @var ?array $finance */
 // Server-Kachel: unterscheiden zwischen "Server antwortet", "Server antwortet nicht" und "wir haben länger nicht nachgesehen"
 $fetchAge = $snap ? time() - strtotime($snap['fetched_at']) : null;
 $stale = $fetchAge !== null && $fetchAge > 900;          // länger als 15 Minuten kein Abruf (Cron alle 5 Min.)
@@ -59,7 +59,7 @@ if (count($moneyHistory) >= 2) {
         <div class="tile-value <?= e($serverState[0]) ?>"><?= e($serverState[1]) ?></div>
         <div class="tile-sub"><?= e($serverState[2]) ?><?= $gameVersion ? ' · LS25 ' . e($gameVersion) : '' ?></div>
         <?php if ($snap && (int) $snap['ok'] !== 1 && $snap['error']): ?><div class="tile-sub small bad"><?= e($snap['error']) ?></div><?php endif; ?>
-        <?php if ($stale && has_role($user, 'admin')): ?><div class="tile-sub warn">Der Cronjob ruft normalerweise alle 5 Min. ab, bitte prüfen.</div><?php endif; ?>
+        <?php if ($stale && can($user, 'admin.settings')): ?><div class="tile-sub warn">Der Cronjob ruft normalerweise alle 5 Min. ab, bitte prüfen.</div><?php endif; ?>
     </div>
     <div class="tile">
         <div class="tile-label">Spieler online</div>
@@ -71,6 +71,13 @@ if (count($moneyHistory) >= 2) {
         <div class="tile-value money"><?= e(fmt_money($myFarm['money'] ?? null)) ?></div>
         <div class="tile-sub"><?= ($myFarm['loan'] ?? 0) > 0 ? 'Kredit: ' . e(fmt_money($myFarm['loan'])) : 'Kein Kredit' ?></div>
     </div>
+    <?php if ($finance !== null): ?>
+        <a class="tile tile-link" href="<?= e(url('finanzen?hof=' . (int) $farmId)) ?>">
+            <div class="tile-label">Finanzen · nicht zugeordnet</div>
+            <div class="tile-value <?= abs($finance['open']) >= 1 ? 'warn' : 'ok' ?>"><?= abs($finance['open']) >= 1 ? e(fmt_money($finance['open'])) : '✓ alles gebucht' ?></div>
+            <div class="tile-sub"><?= abs($finance['open']) >= 1 ? 'Da fehlen wohl Buchungen' : 'Kontostand und Kassenbuch passen' ?><?= $finance['suggestions'] ? ' · ' . (int) $finance['suggestions'] . ' Vorschläge' : '' ?></div>
+        </a>
+    <?php endif; ?>
     <div class="tile">
         <div class="tile-label">Fuhrpark</div>
         <div class="tile-value"><?= (int) $fleet['n'] ?> <small>Fahrzeuge</small></div>
@@ -81,7 +88,7 @@ if (count($moneyHistory) >= 2) {
 <div class="grid-2">
     <section class="card">
         <h2>Kontostand – letzte 30 Tage</h2>
-        <?= $spark ?: '<p class="muted">Noch zu wenig Daten. Der Verlauf füllt sich mit jedem stündlichen Abruf.</p>' ?>
+        <?= $spark ?: '<p class="muted">Noch zu wenig Daten. Der Verlauf füllt sich mit jedem Server-Save.</p>' ?>
     </section>
 
     <section class="card">

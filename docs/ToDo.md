@@ -14,7 +14,7 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | # | Paket | Umfang |
 | --- | --- | --- |
 | 1 | Grundlagen: Rollen und Rechte, Einstellungen | erledigt (0.3) |
-| 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | mittel |
+| 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | erledigt (0.4) |
 | 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben | mittel |
 | 4 | Fahrzeugverwaltung erweitern | klein |
 | 5 | Datenweg erweitern: Export-Mod für Tiere, Lager und Höfe 2–8 | erledigt (0.2) |
@@ -34,24 +34,25 @@ Ist schon da: Unter `/admin/nutzer` kann man anlegen, bearbeiten und de-/aktivie
 - [x] Rechte statt fest verdrahteter Rollenprüfungen: Jede Rolle ist ein Bündel von Rechten (z. B. `tasks.assign`, `finance.book`, `admin.settings`). Neue Funktionen fragen Rechte ab, nicht Rollen.
 - [x] **Deaktivieren statt löschen.** Aufgaben, Buchungen und Verläufe behalten ihren Urheber. Wenn wirklich gelöscht werden muss, dann nur anonymisieren (Name/E-Mail entfernen).
 - [x] Seite **Rollen & Rechte** unter Verwaltung: Matrix, Rollen umbenennen, eigene Rollen anlegen und löschen
-- [ ] Später, mit den Finanzen: hofbezogene Rechte (z. B. Farmmanager nur für den eigenen Hof)
+- [x] Hofbezogene Rechte bei den Finanzen: ohne das Recht „Alle Höfe“ nur der eigene Hof
 
-## 2. Finanzen
+## 2. Finanzen ✔
 
-Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert, ohne dass gebucht wurde.
+Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert, ohne dass gebucht wurde. Seite `/finanzen`.
 
-- [ ] Buchung = Datum/Spieltag, Hof, Kategorie, Betrag, Text, optional Verweis auf Fahrzeug, Feld, Aufgabe oder Lohnauftrag
-- [ ] **Kategorien in der Datenbank**, pflegbar vom Admin (siehe Administration). Startwerte:
+- [x] Buchung = Spieltag, Hof, Kategorie, Betrag, Text, optional Verweis auf Fahrzeug oder Farmland (Aufgabe/Lohnauftrag kommt mit Paket 3). Stornieren statt löschen.
+- [x] **Kategorien in der Datenbank**, pflegbar unter Verwaltung → Buchungssätze (anlegen, umbenennen, deaktivieren). Startwerte:
   - **Einnahmen:** Lohnaufträge, Verkauf Fahrzeuge/Maschinen, Verkauf Ernteerträge, Verkauf Felder, Sonstiges
-  - **Ausgaben:** Fahrzeugwartung und Treibstoff, Landkauf, Pacht, Lohn, Verbrauchsgüter (Dünger, Saatgut usw.), Sonstiges
-- [ ] **Differenzerkennung** über `farm_money_history`: Die Änderung des Kontostands wird mit der Summe der Buchungen im selben Zeitraum verglichen, der Rest erscheint als „ungeklärt“.
-  - Achtung: Der Kontostand ändert sich nur, wenn der Server speichert. Mit der Export-Mod gibt es ihn für alle Höfe.
-  - Laufende Kosten (Helferlohn, Treibstoff, Wartung) sind nie einzeln sichtbar, dafür gibt es eine Sammelbuchung „Laufende Kosten“.
-- [ ] **Buchungsvorschläge** automatisch:
+  - **Ausgaben:** Fahrzeugwartung und Treibstoff, Kauf Fahrzeuge/Maschinen (neu ergänzt), Landkauf, Pacht, Lohn, Verbrauchsgüter (Dünger, Saatgut usw.), Sonstiges
+- [x] **Differenzerkennung** je Spieltag über `farm_money_history` (jetzt ein Punkt pro Save-Änderung, mit Spieltag und Kredit): Änderung − Kredit − Buchungen = „nicht zugeordnet“. Hinweis auf Finanzseite und Dashboard.
+  - Der Kontostand ändert sich nur, wenn der Server speichert.
+  - Laufende Kosten sind jetzt sichtbar: Die Export-Mod 0.3 zählt jede Geldbewegung im Spiel je Hof, Tag und Art mit. Daraus werden Vorschläge je Buchungssatz, Zuordnung unter Buchungssätze.
+- [x] **Buchungsvorschläge** automatisch:
   - Fahrzeug verschwindet (`removed_at`) → Verkauf
-  - neues Fahrzeug → Kauf
+  - neues Fahrzeug → Kauf (Listenpreis)
   - Farmland-Besitzer wechselt in `stats.xml` → Landkauf/-verkauf
-  - Lohnauftrag erledigt → Einnahme
+  - [ ] Lohnauftrag erledigt → Einnahme (mit dem Lohnauftrag-Objekt in Paket 3)
+- [ ] Im echten Spiel prüfen: Kommen die Arten so an, wie erwartet (`bin/check-mod-export.php`, Abschnitt Finanzen)? Passt die Summe zur Kontostandsänderung?
 
 ## 3. Aufgaben
 
@@ -102,7 +103,7 @@ Mods, die nicht im offiziellen GIANTS-ModHub sind, für die Mitspieler zum Downl
 
 - [x] Einstellungsseite (`/admin/einstellungen`): Höfe, Namen, Wartungsschwelle, Tier-Schwellen, Savegames
 - [ ] Weitere Einstellungen bei Bedarf: Importer-Intervall
-- [ ] Buchungskategorien pflegen (anlegen, umbenennen, deaktivieren)
+- [x] Buchungskategorien pflegen (anlegen, umbenennen, deaktivieren) und Zuordnung der Spiel-Statistik
 - [ ] Rechte je Rolle anzeigen bzw. anpassen
 - Geheimnisse (Feed-Code, DB, FTP) bleiben in `config/config.php`
 

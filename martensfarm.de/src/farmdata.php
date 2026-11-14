@@ -93,7 +93,7 @@ function savegame_detect(string $mapId, string $mapTitle, string $savegameName, 
            ON DUPLICATE KEY UPDATE name = VALUES(name), money = VALUES(money), loan = VALUES(loan), archived_at = VALUES(archived_at)', [$current, $now]);
         q('UPDATE farms SET money = NULL, loan = NULL, updated_at = NULL, name = IF(name_locked = 1, name, CONCAT(\'Hof \', farm_id))');
         q('DELETE FROM prices');
-        foreach (['current_period', 'current_day_in_period', 'last_day_time', 'mf_written_at'] as $s) {
+        foreach (['current_period', 'current_day_in_period', 'last_day_time', 'mf_written_at', 'current_game_day'] as $s) {
             setting_set($s, null);
         }
         $log[] = ($known ? 'Savegame gewechselt' : 'Neues Savegame erkannt') . ": {$savegameName} ({$mapId}). Die Kontostände des alten Spielstands sind archiviert.";
@@ -136,6 +136,7 @@ function parse_mf_export(SimpleXMLElement $mf): array
         'farms'       => [],
         'husbandries' => [],
         'storages'    => [],
+        'finances'    => null,
         'missing'     => isset($mf->diag) ? array_filter(explode(',', (string) $mf->diag['missing'])) : [],
     ];
     if (isset($mf->game)) {
@@ -205,6 +206,35 @@ function parse_mf_export(SimpleXMLElement $mf): array
             'fills'       => mf_fills($s),
         ];
     }
+    // Ab Schema 3: Geldbewegungen je Hof, Spieltag und Art (seit Serverstart, die letzten Tage)
+    if (isset($mf->finances)) {
+        $days = [];
+        foreach ($mf->finances->day ?? [] as $d) {
+            $stats = [];
+            foreach ($d->stat ?? [] as $st) {
+                $name = mb_substr((string) $st['name'], 0, 50);
+                if ($name !== '') {
+                    $stats[$name] = ['amount' => (float) $st['amount'], 'count' => (int) $st['count']];
+                }
+            }
+            $days[] = ['farm_id' => (int) $d['farmId'], 'day' => (int) $d['day'], 'stats' => $stats];
+        }
+        $gameStats = [];
+        foreach ($mf->finances->gameStats ?? [] as $g) {
+            $row = [];
+            foreach ($g->attributes() as $k => $v) {
+                if ($k !== 'farmId') {
+                    $row[(string) $k] = (float) $v;
+                }
+            }
+            $gameStats[(int) $g['farmId']] = $row;
+        }
+        $out['finances'] = [
+            'session'    => mb_substr((string) $mf->finances['session'], 0, 20),
+            'days'       => $days,
+            'game_stats' => $gameStats,
+        ];
+    }
     return $out;
 }
 
@@ -218,6 +248,11 @@ function import_mf_export(array $mf, int $savegameId, string $now, array &$log):
     $stamp = $savegameId . '|' . $mf['written_at'];
     if (setting_get('mf_written_at') === $stamp) {
         return $mf['farms'] !== [];
+    }
+
+    // Spieltag zuerst merken: Geldverlauf, Buchungen und Vorschläge hängen daran
+    if (($mf['environment']['day'] ?? null) !== null) {
+        setting_set('current_game_day', (string) $mf['environment']['day']);
     }
 
     foreach ($mf['farms'] as $f) {
@@ -261,6 +296,10 @@ function import_mf_export(array $mf, int $savegameId, string $now, array &$log):
         mark_missing_removed('storages', 'storage_key', array_column($mf['storages'], 'storage_key'), $savegameId, $now);
     }
 
+    if ($mf['finances'] !== null) {
+        import_game_finances($mf['finances'], $savegameId, $now);
+    }
+
     // Spielkalender vom Server übernehmen (ersetzt das manuelle Setzen auf der Preisseite)
     $env = $mf['environment'];
     if ($env && $env['period'] !== null && $env['period'] >= 1 && $env['period'] <= 12) {
@@ -278,8 +317,9 @@ function import_mf_export(array $mf, int $savegameId, string $now, array &$log):
         'schema' => $mf['schema'], 'mod_version' => $mf['mod_version'], 'written_at' => $mf['written_at'],
         'imported_at' => $now, 'missing' => array_values($mf['missing']),
     ]));
-    $log[] = sprintf('Export-Mod %s: %d Höfe, %d Ställe, %d Lager (Stand %s).',
-        $mf['mod_version'], count($mf['farms']), count($mf['husbandries']), count($mf['storages']), $mf['written_at']);
+    $log[] = sprintf('Export-Mod %s: %d Höfe, %d Ställe, %d Lager, %d Finanz-Tage (Stand %s).',
+        $mf['mod_version'], count($mf['farms']), count($mf['husbandries']), count($mf['storages']),
+        count($mf['finances']['days'] ?? []), $mf['written_at']);
     return $mf['farms'] !== [];
 }
 

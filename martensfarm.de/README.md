@@ -9,6 +9,7 @@ Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im 
 - Dashboard: Server online, Spieler, Uhrzeit im Spiel, Kontostand mit Verlauf, fällige Reparaturen, Verkaufstipps
 - Fuhrpark mit Schaden, Stunden, Füllständen und Verkaufshistorie
 - Preise vom Server mit bestem und schlechtestem Monat
+- Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4)
 
 ---
 
@@ -171,6 +172,25 @@ Rollen sind jetzt Bündel von Rechten. Der Code fragt nur Rechte ab (`can($user,
 Die Rolle `admin` darf immer alles. Der letzte aktive Admin kann weder gesperrt noch herabgestuft werden.
 Nutzer werden gesperrt statt gelöscht. Gesperrte Nutzer lassen sich anonymisieren (Name, E-Mail und Hof weg, Nickname bleibt).
 
+### Update auf 0.4 (Finanzen)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Legt `finance_categories`, `finance_stat_map`, `bookings`, `booking_suggestions`,
+   `farmlands` und `game_finances` an und ergänzt `farm_money_history` um Spieltag und Kredit. Darf mehrfach laufen.
+3. Export-Mod 0.3 auf den Server (siehe `mod/README.md`), danach einmal speichern. `bin/check-mod-export.php` zeigt unter „Finanzen“, was ankommt.
+4. Unter **Verwaltung → Rollen & Rechte** die neuen Rechte prüfen: **Alle Höfe** (sonst sieht man nur den eigenen Hof aus „Nutzer & Höfe“)
+   und **Buchungssätze verwalten**. Beide hat nach dem Update nur der Admin.
+
+So funktioniert's:
+- **Kassenbuch** (`/finanzen`): Buchung = Hof, Buchungssatz, Betrag, Spieltag, Text. Falsch gebucht? Stornieren, gelöscht wird nichts.
+- **Abgleich je Spieltag:** Änderung des Kontostands − Änderung des Kredits − Buchungen = *nicht zugeordnet*. Der Kontostand kommt nur
+  beim Server-Save, pro Änderung gibt es einen Punkt im Geldverlauf. Der erste Save nach dem Update ist der Startpunkt.
+- **Vorschläge aus dem Spiel:** Die Mod zählt jede Geldbewegung im Spiel je Hof, Tag und Art mit (Fahrzeugkauf, Treibstoff, Ernteverkauf,
+  Helferlohn …). Unter **Verwaltung → Buchungssätze** legt man fest, welche Art in welchem Buchungssatz landet. Ein Klick übernimmt den offenen Rest.
+- **Erkannte Ereignisse:** neues Fahrzeug → Kauf (Listenpreis), Fahrzeug weg → Verkauf, Farmland-Besitzer gewechselt (Stats-Feed) → Landkauf/-verkauf.
+  Geleaste Fahrzeuge laufen über die Spiel-Vorschläge.
+- Buchungen hängen am Savegame. Alte Savegames lassen sich auf der Finanzseite auswählen und nur noch ansehen.
+
 ### Gameserver wechseln und Kartenbild
 
 Adresse und Feed-Code des Servers stehen entweder in `config/config.php` oder unter **Einstellungen → Gameserver**.
@@ -185,5 +205,5 @@ Kein Datenbank-Update nötig.
 
 ## Nächste Phasen
 
-- **Phase 2:** Aufgaben-Board (Kanban), automatische Werkstatt-Aufgaben, Felder
+- **Phase 2:** Lohnaufträge als eigenes Objekt (Aufgabe + Einnahme), Aufgaben-Board (Kanban), automatische Werkstatt-Aufgaben, Felder
 - **Phase 3:** Rechnungen zwischen Höfen, Karte mit Fahrzeugpositionen, Discord-Webhook

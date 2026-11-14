@@ -23,6 +23,15 @@ $animalCount = array_sum(array_column($pens, 'animals'));
 $penAlerts = array_values(array_filter($pens, fn($p) => $p['alerts']));
 $mfInfo = mf_info();
 
+// Finanzen: offener Betrag und Vorschläge für den angezeigten Hof
+$finance = null;
+if ($sgId !== null && finance_can_view($user, (int) $farmId)) {
+    $finance = [
+        'open'        => finance_open_amount($sgId, (int) $farmId),
+        'suggestions' => (int) q('SELECT COUNT(*) FROM booking_suggestions WHERE savegame_id = ? AND farm_id = ? AND status = \'open\'', [$sgId, $farmId])->fetchColumn(),
+    ];
+}
+
 // Verkaufstipps: aktuelle Periode vs. Bestpreis
 $period = current_period_key();
 $tips = [];
@@ -35,4 +44,4 @@ foreach (['MILK', 'WHEAT', 'BARLEY', 'OAT', 'CANOLA', 'MAIZE', 'WOODCHIPS'] as $
     $tips[] = ['type' => $ft, 'now' => $period ? ($rows[$period] ?? null) : null, 'best' => max($rows), 'best_period' => $best];
 }
 
-render('dashboard', compact('user', 'snap', 'lastOk', 'players', 'farms', 'farmId', 'moneyHistory', 'fleet', 'repairs', 'threshold', 'pens', 'animalCount', 'penAlerts', 'mfInfo', 'tips', 'period') + ['title' => 'Dashboard', 'nav' => 'dashboard']);
+render('dashboard', compact('user', 'snap', 'lastOk', 'players', 'farms', 'farmId', 'moneyHistory', 'fleet', 'repairs', 'threshold', 'pens', 'animalCount', 'penAlerts', 'mfInfo', 'tips', 'period', 'finance') + ['title' => 'Dashboard', 'nav' => 'dashboard']);

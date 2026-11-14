@@ -174,7 +174,20 @@ function parse_stats(SimpleXMLElement $x): array
             'ai'       => (string) $v['isAIActive'] === 'true',
         ];
     }
+    // Farmlands mit Besitzer (owner = farmId, 0 = niemand). Für Landkauf/-verkauf-Vorschläge.
+    $farmlands = [];
+    foreach ($x->Farmlands->Farmland ?? [] as $f) {
+        if (!isset($f['id'])) {
+            continue;
+        }
+        $farmlands[(int) $f['id']] = [
+            'name'  => (string) $f['name'],
+            'owner' => (int) $f['owner'],
+            'area'  => isset($f['area']) ? (float) $f['area'] : null,
+        ];
+    }
     return [
+        'farmlands'   => $farmlands,
         'server_name' => html_entity_decode((string) $x['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
         'map_name'    => (string) $x['mapName'],
         'version'     => (string) $x['version'],
@@ -350,6 +363,15 @@ function run_import(bool $force = false): array
     }
     $sgId = current_savegame_id();
 
+    // Farmland-Besitzer abgleichen (Stats-Feed ist live, Vorschläge erst ab dem zweiten Abruf)
+    if ($sgId !== null && $stats['farmlands']) {
+        try {
+            import_farmlands($stats['farmlands'], $sgId, $now, $log);
+        } catch (Throwable $e) {
+            $log[] = 'farmlands: ' . $e->getMessage();
+        }
+    }
+
     // 4) Fahrzeuge – Namen aus dem Stats-Feed über die Position zuordnen
     if (in_array('vehicles', $files, true)) {
         try {
@@ -359,6 +381,9 @@ function run_import(bool $force = false): array
                 $names[sprintf('%.1f|%.1f', $sv['x'], $sv['z'])] = $sv;
             }
             $count = 0;
+            // Für Kauf-/Verkaufsvorschläge: was kannten wir schon? Beim allerersten Import gibt es keine Vorschläge.
+            $knownIds = array_flip(q('SELECT unique_id FROM vehicles WHERE savegame_id <=> ?', [$sgId])->fetchAll(PDO::FETCH_COLUMN));
+            $firstImport = $knownIds === [];
             foreach ($vehicles as $v) {
                 // Nur Spieler-Höfe (1–8). Kartenfahrzeuge (Zug, farmId 0), NPC-Höfe und Paletten überspringen
                 if ($v['farm_id'] < 1 || $v['farm_id'] > 8 || $v['unique_id'] === '' || $v['property_state'] === 'NONE'
@@ -378,7 +403,16 @@ function run_import(bool $force = false): array
                     $v['damage'], $v['wear'], json_encode($v['fills']), $v['x'], $v['z'], (int) ($sv['ai'] ?? false), $now, $now,
                 ]);
                 ensure_farm_exists($v['farm_id']);
+                if (!$firstImport && $sgId !== null && !isset($knownIds[$v['unique_id']])) {
+                    vehicle_suggestion('vehicle_buy', $sgId, $v['farm_id'], $v['unique_id'], $sv['name'] ?? vehicle_name_from_file($v['filename']), $v['price'], $v['property_state'], $now);
+                }
                 $count++;
+            }
+            // Nicht mehr vorhandene Fahrzeuge → Verkaufsvorschlag (nur wenn die Datei überhaupt Fahrzeuge hatte)
+            if ($count > 0 && $sgId !== null) {
+                foreach (q('SELECT unique_id, farm_id, name, price, property_state FROM vehicles WHERE savegame_id = ? AND last_seen_at < ? AND removed_at IS NULL', [$sgId, $now])->fetchAll() as $old) {
+                    vehicle_suggestion('vehicle_sale', $sgId, (int) $old['farm_id'], $old['unique_id'], $old['name'], null, (string) $old['property_state'], $now);
+                }
             }
             // Nicht mehr vorhandene Fahrzeuge als verkauft/entfernt markieren
             q('UPDATE vehicles SET removed_at = ? WHERE savegame_id <=> ? AND last_seen_at < ? AND removed_at IS NULL', [$now, $sgId, $now]);
@@ -433,11 +467,17 @@ function upsert_farm(int $farmId, string $name, ?int $color, ?int $money, ?int $
        ON DUPLICATE KEY UPDATE name = IF(name_locked = 1, name, VALUES(name)), color = COALESCE(VALUES(color), color), money = COALESCE(VALUES(money), money),
          loan = COALESCE(VALUES(loan), loan), updated_at = VALUES(updated_at)', [$farmId, $name !== '' ? $name : "Hof {$farmId}", $color, $money, $loan, $now]);
     if ($money !== null) {
-        // Verlauf: höchstens ein Punkt pro Stunde, sonst wird die Tabelle unnötig groß
+        // Verlauf: ein Punkt pro Änderung von Geld oder Kredit (passiert nur beim Speichern), mit Spieltag.
+        // Daraus rechnet der Finanz-Abgleich, wie viel sich zwischen zwei Saves bewegt hat.
         $sgId = current_savegame_id();
-        $lastHour = q('SELECT COUNT(*) FROM farm_money_history WHERE farm_id = ? AND savegame_id <=> ? AND fetched_at > NOW() - INTERVAL 1 HOUR', [$farmId, $sgId])->fetchColumn();
-        if ((int) $lastHour === 0) {
-            q('INSERT INTO farm_money_history (farm_id, savegame_id, fetched_at, money) VALUES (?, ?, ?, ?)', [$farmId, $sgId, $now, $money]);
+        $day = setting_get('current_game_day');
+        $day = $day !== null && $day !== '' ? (int) $day : null;
+        $last = q('SELECT money, loan, game_day FROM farm_money_history WHERE farm_id = ? AND savegame_id <=> ? ORDER BY fetched_at DESC, id DESC LIMIT 1', [$farmId, $sgId])->fetch();
+        $changed = !$last || (int) $last['money'] !== $money
+            || ($loan !== null && (int) ($last['loan'] ?? -1) !== $loan)
+            || ($last['game_day'] === null && $day !== null);
+        if ($changed) {
+            q('INSERT INTO farm_money_history (farm_id, savegame_id, fetched_at, game_day, money, loan) VALUES (?, ?, ?, ?, ?, ?)', [$farmId, $sgId, $now, $day, $money, $loan]);
         }
     }
 }

@@ -198,3 +198,8 @@ code { background: var(--bg-2); padding: .05rem .35rem; border-radius: 4px; font
 .map-img { display: block; width: 100%; max-width: 512px; height: auto; aspect-ratio: 1; border-radius: var(--radius); border: 1px solid var(--line); background: var(--line); }
 .map-img.mini { max-width: 260px; }
 .btn-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+
+/* Finanzen */
+a.tile-link { display: block; color: inherit; text-decoration: none; }
+a.tile-link:hover { border-color: var(--green); }
+.page-head .btn-row form.inline select { min-width: 9rem; }
