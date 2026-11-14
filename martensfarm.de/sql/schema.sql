@@ -375,7 +375,13 @@ CREATE TABLE IF NOT EXISTS server_mods (
     note          TEXT NULL,
     first_seen_at DATETIME NOT NULL,
     last_seen_at  DATETIME NOT NULL,
-    changed_at    DATETIME NULL
+    changed_at    DATETIME NULL,
+    -- Hochgeladene ZIP (liegt in var/mods/), Version aus der modDesc.xml
+    file_version     VARCHAR(30) NULL,
+    file_sha256      CHAR(64) NULL,
+    file_size        BIGINT UNSIGNED NULL,
+    file_uploaded_at DATETIME NULL,
+    file_uploaded_by INT UNSIGNED NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Wer wann was geladen hat (nur für die Übersicht, Einträge älter als 180 Tage werden gelöscht)
