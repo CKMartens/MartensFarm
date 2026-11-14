@@ -6,10 +6,53 @@ declare(strict_types=1);
  * Nur lesend. Ein Abruf = 1 Stats-Feed + wenige Savegame-Dateien, mit Timeout und Mindestabstand.
  */
 
-function gs_fetch(string $path): string
+/**
+ * Zugangsdaten zum Gameserver. Was unter Admin → Einstellungen steht, gilt vorrangig,
+ * sonst die Werte aus config/config.php. So klappt ein Server- oder Anbieterwechsel ohne Dateizugriff.
+ */
+function gs_base_url(): string
 {
-    $url = rtrim((string) config('gameserver.base_url'), '/') . $path;
-    $ch = curl_init($url);
+    $v = trim((string) setting_get('gs_base_url', ''));
+    return rtrim($v !== '' ? $v : (string) config('gameserver.base_url', ''), '/');
+}
+
+function gs_code(): string
+{
+    $v = (string) setting_get('gs_code', '');
+    return $v !== '' ? $v : (string) config('gameserver.code', '');
+}
+
+/** Woher die aktiven Zugangsdaten kommen: 'settings' oder 'config' */
+function gs_source(): string
+{
+    return trim((string) setting_get('gs_base_url', '')) !== '' || (string) setting_get('gs_code', '') !== '' ? 'settings' : 'config';
+}
+
+/** Adresse prüfen und normalisieren: nur http(s)://host[:port], ohne Pfad. Null = ungültig. */
+function gs_normalize_base_url(string $url): ?string
+{
+    $url = rtrim(trim($url), '/');
+    $p = parse_url($url);
+    if (!$p || !in_array(strtolower($p['scheme'] ?? ''), ['http', 'https'], true) || empty($p['host'])
+        || isset($p['user']) || isset($p['pass']) || isset($p['query']) || isset($p['fragment']) || (($p['path'] ?? '') !== '')) {
+        return null;
+    }
+    return strtolower($p['scheme']) . '://' . $p['host'] . (isset($p['port']) ? ':' . (int) $p['port'] : '');
+}
+
+/** Code für die Anzeige: nur die letzten drei Zeichen */
+function gs_mask(string $code): string
+{
+    return $code === '' ? '' : '••••' . mb_substr($code, -3);
+}
+
+function gs_fetch(string $path, ?string $baseUrl = null): string
+{
+    $base = $baseUrl ?? gs_base_url();
+    if ($base === '' || str_contains($base, 'IP-DES-GAMESERVERS')) {
+        throw new RuntimeException('Keine Gameserver-Adresse eingetragen');
+    }
+    $ch = curl_init($base . $path);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_FOLLOWLOCATION => false,
@@ -24,7 +67,10 @@ function gs_fetch(string $path): string
     $err = curl_error($ch);
     unset($ch); // curl_close() ist ab PHP 8.5 veraltet
     if ($body === false || $status !== 200) {
-        throw new RuntimeException("Abruf fehlgeschlagen ({$status}) {$err}");
+        // Fehlermeldungen landen auch auf dem Dashboard: Host/IP nicht mit ausgeben
+        $host = (string) parse_url($base, PHP_URL_HOST);
+        $err = $host !== '' ? str_replace($host, 'Gameserver', $err) : $err;
+        throw new RuntimeException(trim("Abruf fehlgeschlagen ({$status}) {$err}"));
     }
     return (string) $body;
 }
@@ -46,14 +92,63 @@ function gs_xml(string $body): SimpleXMLElement
     return $xml;
 }
 
-function gs_stats(): SimpleXMLElement
+function gs_stats(?string $baseUrl = null, ?string $code = null): SimpleXMLElement
 {
-    return gs_xml(gs_fetch('/feed/dedicated-server-stats.xml?code=' . rawurlencode((string) config('gameserver.code'))));
+    return gs_xml(gs_fetch('/feed/dedicated-server-stats.xml?code=' . rawurlencode($code ?? gs_code()), $baseUrl));
 }
 
 function gs_savegame(string $file): SimpleXMLElement
 {
-    return gs_xml(gs_fetch('/feed/dedicated-server-savegame.html?code=' . rawurlencode((string) config('gameserver.code')) . '&file=' . rawurlencode($file)));
+    return gs_xml(gs_fetch('/feed/dedicated-server-savegame.html?code=' . rawurlencode(gs_code()) . '&file=' . rawurlencode($file)));
+}
+
+/**
+ * Kartenbild aus dem Stats-Feed, zwischengespeichert unter var/cache/.
+ * Der Dateiname hängt an Server, Code und Savegame: Nach einem Server- oder Mapwechsel
+ * wird also automatisch neu geladen. Ist der Server weg, kommt das letzte Bild.
+ * Gibt den Pfad zur JPG-Datei zurück oder null, wenn es (noch) keins gibt.
+ */
+const MAP_CACHE_SECONDS = 6 * 3600;
+
+function gs_map_file(bool $refresh = false): ?string
+{
+    $dir = APP_ROOT . '/var/cache';
+    if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
+        $dir = sys_get_temp_dir();
+    }
+    $base = gs_base_url();
+    $code = gs_code();
+    if ($base === '' || $code === '') {
+        return null;
+    }
+    $file = $dir . '/map-' . substr(hash('sha256', $base . '|' . $code . '|' . (current_savegame_id() ?? 0)), 0, 16) . '.jpg';
+    $fresh = is_file($file) && time() - (int) filemtime($file) < MAP_CACHE_SECONDS;
+    if ($fresh && !$refresh) {
+        return $file;
+    }
+    try {
+        $img = gs_fetch('/feed/dedicated-server-stats-map.jpg?code=' . rawurlencode($code)
+            . '&quality=' . (int) config('gameserver.map_quality', 60) . '&size=' . (int) config('gameserver.map_size', 512));
+        if (!str_starts_with($img, "\xFF\xD8")) {
+            throw new RuntimeException('Antwort ist kein JPG');
+        }
+        $tmp = $file . '.part';
+        if (@file_put_contents($tmp, $img) !== false && @rename($tmp, $file)) {
+            foreach (glob($dir . '/map-*.jpg') ?: [] as $old) {
+                if ($old !== $file) {
+                    @unlink($old);
+                }
+            }
+        }
+    } catch (Throwable $e) {
+        // Server nicht erreichbar: altes Bild weiter zeigen (ggf. auch das vom alten Savegame)
+        if (!is_file($file)) {
+            $old = glob($dir . '/map-*.jpg') ?: [];
+            return $old ? $old[0] : null;
+        }
+        @touch($file, time() - MAP_CACHE_SECONDS + 900); // in 15 Min. erneut versuchen
+    }
+    return is_file($file) ? $file : null;
 }
 
 /** Stats-Feed: Serverinfos, Spieler, Fahrzeugnamen */

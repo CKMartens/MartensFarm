@@ -32,6 +32,8 @@ return [
     ],
 
     'gameserver' => [
+        // Adresse und Code lassen sich auch unter Admin → Einstellungen pflegen. Was dort steht, gilt vorrangig,
+        // die Werte hier sind dann nur noch der Fallback.
         // Basis-URL des Web-Interfaces vom Dedicated Server (Nitrado), ohne /feed/...
         'base_url'   => 'http://IP-DES-GAMESERVERS:PORT',
         // Der "code" aus den Feed-Links. GEHEIM halten!
@@ -42,5 +44,8 @@ return [
         'timeout_s'  => 15,
         // Mindestabstand zwischen zwei Abrufen (schont den Gameserver)
         'min_interval_s' => 240,
+        // Kartenbild aus dem Stats-Feed (Dashboard, Einstellungen); wird 6 Stunden zwischengespeichert
+        'map_size'    => 512,
+        'map_quality' => 60,
     ],
 ];

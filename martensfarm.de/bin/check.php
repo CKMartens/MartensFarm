@@ -22,7 +22,12 @@ $line(PHP_VERSION_ID >= 80200, 'PHP-Version ' . PHP_VERSION . ' (mind. 8.2)');
 foreach (['pdo_mysql', 'curl', 'simplexml', 'mbstring', 'openssl'] as $ext) {
     $line(extension_loaded($ext), "Erweiterung {$ext}");
 }
-$line(!str_contains((string) config('gameserver.code'), 'HIER_'), 'Server-Code eingetragen');
+try {
+    $gsCode = gs_code(); // Einstellungen in der DB, sonst config.php
+} catch (Throwable) {
+    $gsCode = (string) config('gameserver.code');
+}
+$line($gsCode !== '' && !str_contains($gsCode, 'HIER_'), 'Server-Code eingetragen');
 $line(str_starts_with((string) config('app.base_url'), 'https://'), 'base_url nutzt https');
 
 try {

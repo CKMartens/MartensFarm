@@ -25,6 +25,7 @@ martensfarm.de/          (= /home/users/cmartens/www/martensfarm.de)
 ├── views/           ← HTML-Vorlagen
 ├── cron/import.php  ← Abruf vom Gameserver (Cronjob)
 ├── bin/             ← Werkzeuge: check.php, create-admin.php
+├── var/cache/       ← Zwischenspeicher (Kartenbild), legt die App selbst an
 └── sql/schema.sql   ← Datenbank-Tabellen
 ```
 
@@ -53,7 +54,8 @@ Dann in **phpMyAdmin** die Datenbank auswählen → **Importieren** → `sql/sch
 ### 4. Konfiguration
 `config/config.example.php` nach `config/config.php` kopieren und ausfüllen:
 - `db.*`: Zugangsdaten aus Schritt 3
-- `gameserver.code`: der `code=...` aus euren Server-Links
+- `gameserver.base_url` und `gameserver.code`: Adresse und der `code=...` aus euren Server-Links
+  (lassen sich später auch unter **Einstellungen → Gameserver** pflegen, das gilt dann vorrangig)
 - `mail.from_address`: z. B. `hof@martensfarm.de`
 
 Rechte: `chmod 640 config/config.php`
@@ -168,6 +170,16 @@ Die Savegame-Feeds ändern sich nur, wenn der Server speichert (Autosave bzw. ma
 Rollen sind jetzt Bündel von Rechten. Der Code fragt nur Rechte ab (`can($user, 'finance.book')`), der Katalog steht in `src/permissions.php`.
 Die Rolle `admin` darf immer alles. Der letzte aktive Admin kann weder gesperrt noch herabgestuft werden.
 Nutzer werden gesperrt statt gelöscht. Gesperrte Nutzer lassen sich anonymisieren (Name, E-Mail und Hof weg, Nickname bleibt).
+
+### Gameserver wechseln und Kartenbild
+
+Adresse und Feed-Code des Servers stehen entweder in `config/config.php` oder unter **Einstellungen → Gameserver**.
+Was in den Einstellungen steht, gilt vorrangig. Dort gibt es „Verbindung testen“ und „Zurück zu config.php“.
+Der Code wird nur maskiert angezeigt und geht nie im Klartext an den Browser.
+
+Das Kartenbild aus dem Stats-Feed liefert die App selbst unter `/karte.jpg` aus (nur angemeldet). Sie speichert es 6 Stunden
+in `var/cache/` und lädt es nach einem Server- oder Savegame-Wechsel sofort neu. Größe und Qualität: `gameserver.map_size` und `map_quality`.
+Kein Datenbank-Update nötig.
 
 ---
 

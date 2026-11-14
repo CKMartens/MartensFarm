@@ -82,6 +82,21 @@ try {
             require APP_ROOT . '/src/pages/storage.php';
             break;
 
+        case 'GET karte.jpg':
+            // Kartenbild vom Gameserver, über die App ausgeliefert: Adresse und Code bleiben auf dem Server
+            require_login();
+            $file = gs_map_file();
+            if ($file === null) {
+                http_response_code(404);
+                exit;
+            }
+            header('Content-Type: image/jpeg');
+            header('Content-Length: ' . filesize($file));
+            header('Cache-Control: private, max-age=3600');
+            header('Last-Modified: ' . gmdate('D, d M Y H:i:s', (int) filemtime($file)) . ' GMT');
+            readfile($file);
+            exit;
+
         case 'GET preise':
             $user = require_login();
             require APP_ROOT . '/src/pages/prices.php';

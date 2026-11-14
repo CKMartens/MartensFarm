@@ -152,6 +152,7 @@ svg.spark polyline { fill: none; stroke: var(--green); stroke-width: 2.5; vector
 .alert-success { border-color: var(--ok); }
 .alert-error { border-color: var(--bad); color: #ffd1d0; }
 .alert-info { border-color: #4a90d9; }
+.alert-warning { border-color: var(--warn); }
 
 /* Anmeldung */
 body.auth { display: grid; place-items: center; min-height: 100vh; padding: 1rem; }
@@ -192,3 +193,8 @@ code { background: var(--bg-2); padding: .05rem .35rem; border-radius: 4px; font
 .table.matrix tr.group-row th { color: var(--text); text-transform: uppercase; font-size: .75rem; letter-spacing: .06em; padding-top: .9rem; }
 .card .page-head { margin-bottom: .6rem; }
 .card .page-head h2 { margin: 0; }
+
+/* Kartenbild */
+.map-img { display: block; width: 100%; max-width: 512px; height: auto; aspect-ratio: 1; border-radius: var(--radius); border: 1px solid var(--line); background: var(--line); }
+.map-img.mini { max-width: 260px; }
+.btn-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
