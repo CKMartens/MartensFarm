@@ -15,11 +15,13 @@ declare(strict_types=1);
  * Die App bewegt kein Geld im Spiel, sie führt nur Buch.
  */
 
-/** Deutsche Namen der Finanz-Statistiken aus dem Spiel */
 /** Deutsche Namen der Finanz-Arten, wie LS25 sie unter Finanzen anzeigt */
 const FINANCE_STAT_NAMES = [
     'newVehiclesCost'     => 'Neue Fahrzeuge',
     'soldVehicles'        => 'Verkaufte Fahrzeuge',
+    'newHandtoolsCost'    => 'Neue Werkzeuge',
+    // Echttest 14.11.: Werkzeug verkaufen bringt Geld, kaufen zieht auf dem Dedi nichts ab
+    'soldHandtools'       => 'Verkaufte Werkzeuge',
     'newAnimalsCost'      => 'Neue Tiere',
     'soldAnimals'         => 'Verkaufte Tiere',
     'constructionCost'    => 'Baukosten',

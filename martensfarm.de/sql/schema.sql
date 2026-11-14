@@ -269,6 +269,8 @@ INSERT IGNORE INTO finance_stat_map (stat, category_id)
 SELECT m.stat, c.id FROM (
     SELECT 'newVehiclesCost' AS stat, 'vehicle_buy' AS code
     UNION ALL SELECT 'soldVehicles', 'vehicle_sale'
+    UNION ALL SELECT 'newHandtoolsCost', 'vehicle_buy'
+    UNION ALL SELECT 'soldHandtools', 'vehicle_sale'
     UNION ALL SELECT 'fieldPurchase', 'land_buy'
     UNION ALL SELECT 'fieldSelling', 'field_sale'
     UNION ALL SELECT 'vehicleRunningCost', 'vehicle_costs'

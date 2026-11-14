@@ -52,6 +52,8 @@ Inhalt des Blocks (Schema 3):
 - Ab 0.3.1 kommen je Art auch die interne Kennung (`typeId`), der Titel-Schlüssel (`title`) und der übersetzte Name (`text`) mit.
   Echttest 14.11.: Diesel an der Tankstelle kaufen meldet LS25 nur als allgemeines `expenses`, das taucht auch im Spiel unter Finanzen
   nirgends auf. Die eingebaute Spiel-Statistik zählt pro Monat, nicht pro Tag. Deshalb verlassen wir uns nur auf den eigenen Zähler.
+  Handwerkzeuge (z. B. Kettensäge): Verkaufen kommt als `soldHandtools`, Kaufen zieht auf dem Dedi gar kein Geld ab
+  (Kontostand bleibt gleich, keine Geldbewegung). Es gibt also nichts zu buchen.
 
 ## ZIP bauen
 
