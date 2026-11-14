@@ -10,7 +10,7 @@ Welche Höfe zählen und wie sie heißen, entscheidet die App (Administration �
 Inhalt des Blocks (Schema 3):
 
 ```xml
-<martensFarm schema="3" modVersion="0.3.1" writtenAt="2026-11-14 12:26:46">
+<martensFarm schema="3" modVersion="0.3.2" writtenAt="2026-11-14 12:26:46">
   <game mapId="..." mapTitle="..." savegameName="..." savegameIndex="2"/>
   <environment day="12" period="8" dayInPeriod="2" daysPerPeriod="3" year="1" dayTime="36000000"/>
   <farms>
@@ -48,6 +48,7 @@ Inhalt des Blocks (Schema 3):
   `newVehiclesCost`, `purchaseFuel`, `harvestIncome`, `wagePayment`). Sie behält die letzten 14 Spieltage im Speicher. Nach einem Serverstart
   beginnt eine neue `session`, die App addiert die Sitzungen. Was nach dem letzten Save passiert, geht bei einem Absturz im Spiel und in der App
   gleichermaßen verloren. Fehlt der Hook, steht `moneyHook` in `<diag missing>`.
+- Ab 0.3.2 steht je Art zusätzlich `raw` im Block (Rohansicht der Geldart: Lua-Typ und einfache Felder), dasselbe einmal pro Art im Server-Log (`Geldart …`). Nur zur Diagnose.
 - Ab 0.3.1 kommen je Art auch die interne Kennung (`typeId`), der Titel-Schlüssel (`title`) und der übersetzte Name (`text`) mit.
   Echttest 14.11.: Diesel an der Tankstelle kaufen meldet LS25 nur als allgemeines `expenses`, das taucht auch im Spiel unter Finanzen
   nirgends auf. Die eingebaute Spiel-Statistik zählt pro Monat, nicht pro Tag. Deshalb verlassen wir uns nur auf den eigenen Zähler.
@@ -66,7 +67,7 @@ zip ../FS25_MartensFarmExport.zip modDesc.xml MartensFarmExport.lua icon_Martens
 1. Vorher im Nitrado-Webinterface ein Backup vom Savegame machen.
 2. Server stoppen, `FS25_MartensFarmExport.zip` per FTP in den Mod-Ordner laden, Server starten.
 3. Im Server-Webinterface die Mod für das Savegame aktivieren (falls nötig) und den Server neu starten.
-4. Im Log nach `[MartensFarmExport] Version 0.3.1 geladen` suchen.
+4. Im Log nach `[MartensFarmExport] Version 0.3.2 geladen` suchen.
 5. Einmal speichern (Spieler im Spiel oder Autosave abwarten). Im Log sollte `Block <martensFarm> geschrieben: N Höfe, M Ställe, K Lager, F Finanz-Tage` stehen.
 6. Auf dem Webserver `keyhelp-php85 bin/check-mod-export.php` ausführen (mit `-v` auch leere Ställe und Lager).
 

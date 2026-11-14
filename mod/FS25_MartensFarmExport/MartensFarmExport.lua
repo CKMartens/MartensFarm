@@ -12,7 +12,7 @@
 --   * was eine Spielversion nicht liefert, fehlt einfach und landet in <diag missing="...">.
 
 MartensFarmExport = {}
-MartensFarmExport.VERSION = "0.3.1"
+MartensFarmExport.VERSION = "0.3.2"
 MartensFarmExport.SCHEMA = 3
 MartensFarmExport.hooked = false
 MartensFarmExport.moneyHooked = false
@@ -381,6 +381,24 @@ end
 --- plus interne Kennung und Titel der Geldart, damit wir sehen, was LS25 bei allgemeinen Arten wie "expenses" schickt
 local typeNameCache = setmetatable({}, { __mode = "k" })
 
+--- Diagnose: wie sieht die Geldart roh aus? Lua-Typ plus die einfachen Felder (Zahl, Text, Wahrheitswert)
+local function describeMoneyType(moneyType)
+    local t = type(moneyType)
+    if t ~= "table" then return t .. "=" .. tostring(moneyType) end
+    local parts = {}
+    for k, v in pairs(moneyType) do
+        local tv = type(v)
+        if tv == "string" or tv == "number" or tv == "boolean" then
+            table.insert(parts, tostring(k) .. "=" .. tostring(v))
+        end
+    end
+    table.sort(parts)
+    local mt = getmetatable(moneyType)
+    if mt ~= nil then table.insert(parts, "meta") end
+    if #parts == 0 then return "table{}" end
+    return "table{" .. table.concat(parts, ";", 1, math.min(#parts, 12)) .. "}"
+end
+
 local function moneyTypeInfo(moneyType)
     local stat, typeId, title = "other", nil, nil
     if type(moneyType) == "table" then
@@ -431,6 +449,10 @@ function MartensFarmExport.onAddMoney(_, amount, farmId, moneyType)
         local e = byDay[stat]
         if e == nil then e = { amount = 0, count = 0 } byDay[stat] = e end
         if typeId ~= nil then e.typeId = typeId end
+        if e.dump == nil then
+            e.dump = describeMoneyType(moneyType)
+            log("Geldart %s (Hof %d): %s", stat, f, e.dump)
+        end
         if title ~= nil then e.title = title end
         e.amount = e.amount + a
         e.count = e.count + 1
@@ -473,6 +495,7 @@ local function writeFinances(w, base)
                 w.str(sk .. "#amount", num(e.amount))
                 w.int(sk .. "#count", e.count)
                 if e.typeId ~= nil then w.str(sk .. "#typeId", e.typeId) end
+                if e.dump ~= nil then w.str(sk .. "#raw", string.sub(e.dump, 1, 250)) end
                 if e.title ~= nil then
                     w.str(sk .. "#title", e.title)
                     -- Übersetzung (Sprache des Servers), wenn es den Text gibt

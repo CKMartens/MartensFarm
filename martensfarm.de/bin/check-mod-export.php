@@ -89,6 +89,11 @@ try {
                     $parts[] = $stat . ' ' . fmt_num($v['amount']) . ' (' . $v['count'] . 'x' . ($extra ? ', ' . implode(' ', $extra) : '') . ')';
                 }
                 printf("       Hof %-3d Tag %-4d %s\n", $d['farm_id'], $d['day'], implode(', ', $parts));
+                foreach ($d['stats'] as $stat => $v) {
+                    if (!empty($v['raw'])) {
+                        echo "                    {$stat} roh: {$v['raw']}\n";
+                    }
+                }
             }
         }
         echo $verbose ? '' : "       (mit -v auch leere Ställe und Lager)\n";
