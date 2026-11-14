@@ -19,6 +19,7 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | 4 | Fahrzeugverwaltung erweitern | klein |
 | 5 | Datenweg erweitern: Export-Mod für Tiere, Lager und Höfe 2–8 | erledigt (0.2) |
 | 6 | Downloadverwaltung | erledigt (0.6) |
+| 7 | Nachrichtenboard: Mod-Wünsche, Adminbenachrichtigungen, Hinweise zu Aufgaben | mittel |
 
 ---
 
@@ -103,6 +104,19 @@ weil Nitrado Mods nur mit Login im Web-Interface herausgibt (der Durchreich-Weg 
 - [x] Hinweis über der Liste: nur für unsere Runde, nicht weitergeben, Nutzung auf eigene Gefahr
 - [x] Größengrenze pro Datei (`downloads.max_mb` und PHP-Upload-Grenze), Download-Zahlen je Mod
 - [ ] Bei fremden Mods vorher die Erlaubnis der Autoren einholen, viele verbieten Re-Uploads
+
+## 7. Nachrichtenboard
+
+Neue Seite `/nachrichten`. Ein Ort für alles, was nicht direkt eine Aufgabe oder Buchung ist, damit nichts mehr im Chat untergeht.
+
+- [ ] **Mod-Wünsche:** Spieler schlagen Mods vor (Name, Link zum ModHub oder zur Quelle, Begründung). Status: offen, angenommen, abgelehnt, installiert. Bei „installiert“ Verweis auf den Eintrag in der Downloadverwaltung
+- [ ] **Adminbenachrichtigungen:** Admin bzw. Farmmanager veröffentlichen Hinweise an alle (z. B. Server-Neustart, Mod-Update, Savegame-Wechsel). Optional anheften und mit Ablaufdatum
+- [ ] **Hinweise zu Aufgaben usw.:** Beiträge mit Verknüpfung zu Aufgabe, Lohnauftrag, Fahrzeug, Stall oder Feld; erscheinen auch in deren Detailansicht
+- [ ] Rechte statt Rollen, z. B. `board.post`, `board.announce`, `board.moderate`. Gäste nur lesen
+- [ ] Ungelesen-Zähler und Kachel „Neue Nachrichten“ auf dem Dashboard
+- [ ] Ausblenden statt löschen, der Urheber bleibt erhalten (wie bei Aufgaben und Buchungen)
+- [ ] Schutz wie überall: nur angemeldet, CSRF, Rate-Limit pro Nutzer, Text ohne HTML (Ausgabe escapen)
+- [ ] Später: Benachrichtigung per Discord-Webhook (siehe Phase 3)
 
 ## Administration
 
