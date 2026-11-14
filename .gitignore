@@ -1,0 +1,46 @@
+# Echte Konfiguration mit Passwörtern und Server-Code – NIE committen
+martensfarm.de/config/config.php
+**/config/config.php
+
+# Lokale Umgebungen / Geheimnisse
+.env
+.env.*
+*.local.php
+
+# Logs, Sperr- und Temp-Dateien
+*.log
+*.lock
+*.tmp
+*.bak
+*.swp
+
+# Datenbank-Dumps (können echte Nutzerdaten enthalten)
+*.sql.gz
+dump*.sql
+backup*.sql
+
+# Gameserver-Feed-Mitschnitte zum Testen (enthalten ggf. den Code in URLs)
+testdata/
+feeds/
+
+# Auslieferungs-ZIPs
+*.zip
+
+# GIANTS-/LS25-Basis-Assets gehören nicht ins Repo
+*.i3d
+*.i3d.shapes
+*.dds
+*.gdm
+*.grle
+
+# Betriebssystem / Editoren
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.code-workspace
+
+# Composer / Node (falls später genutzt)
+vendor/
+node_modules/
