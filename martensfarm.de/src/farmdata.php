@@ -244,7 +244,7 @@ function import_mf_export(array $mf, int $savegameId, string $now, array &$log):
             json_encode($h['foods']), json_encode($h['storage']), $now,
         ]);
     }
-    q('UPDATE husbandries SET removed_at = ? WHERE savegame_id = ? AND updated_at < ? AND removed_at IS NULL', [$now, $savegameId, $now]);
+    mark_missing_removed('husbandries', 'pen_key', array_column($mf['husbandries'], 'pen_key'), $savegameId, $now);
 
     foreach ($mf['storages'] as $s) {
         if ($s['storage_key'] === '' || $s['farm_id'] < 0 || $s['farm_id'] > 255) {
@@ -258,7 +258,7 @@ function import_mf_export(array $mf, int $savegameId, string $now, array &$log):
         ]);
     }
     if ($mf['schema'] >= 2) {
-        q('UPDATE storages SET removed_at = ? WHERE savegame_id = ? AND updated_at < ? AND removed_at IS NULL', [$now, $savegameId, $now]);
+        mark_missing_removed('storages', 'storage_key', array_column($mf['storages'], 'storage_key'), $savegameId, $now);
     }
 
     // Spielkalender vom Server übernehmen (ersetzt das manuelle Setzen auf der Preisseite)
@@ -281,6 +281,17 @@ function import_mf_export(array $mf, int $savegameId, string $now, array &$log):
     $log[] = sprintf('Export-Mod %s: %d Höfe, %d Ställe, %d Lager (Stand %s).',
         $mf['mod_version'], count($mf['farms']), count($mf['husbandries']), count($mf['storages']), $mf['written_at']);
     return $mf['farms'] !== [];
+}
+
+/** Alles, was im aktuellen Export fehlt, als entfernt markieren (gezielt über die Schlüssel) */
+function mark_missing_removed(string $table, string $keyColumn, array $keys, int $savegameId, string $now): void
+{
+    $keys = array_values(array_unique(array_map('strval', $keys)));
+    $sql = "UPDATE {$table} SET removed_at = ? WHERE savegame_id = ? AND removed_at IS NULL";
+    if ($keys) {
+        $sql .= " AND {$keyColumn} NOT IN (" . implode(',', array_fill(0, count($keys), '?')) . ')';
+    }
+    q($sql, array_merge([$now, $savegameId], $keys));
 }
 
 /** Infos zum letzten Export (Version, Zeitpunkt, fehlende Teile) */
@@ -397,4 +408,4 @@ function animal_name(?string $type): string
     return ANIMAL_NAMES[$type] ?? ucfirst(strtolower(str_replace('_', ' ', $type)));
 }
 
-const STORAGE_KINDS = ['silo' => 'Silos und Lager', 'production' => 'Produktionen', 'other' => 'Sonstige Lager', 'husbandry' => 'Stall-Lager'];
+const STORAGE_KINDS = ['silo' => 'Silos und Lager', 'production' => 'Produktionen', 'manure' => 'Mist und Gülle', 'other' => 'Sonstige Lager', 'husbandry' => 'Stall-Lager'];

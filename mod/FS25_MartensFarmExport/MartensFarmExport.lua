@@ -12,7 +12,7 @@
 --   * was eine Spielversion nicht liefert, fehlt einfach und landet in <diag missing="...">.
 
 MartensFarmExport = {}
-MartensFarmExport.VERSION = "0.2.0"
+MartensFarmExport.VERSION = "0.2.1"
 MartensFarmExport.SCHEMA = 2
 MartensFarmExport.hooked = false
 
@@ -185,7 +185,7 @@ end
 local function writeHusbandries(w, base)
     local hs = g_currentMission ~= nil and g_currentMission.husbandrySystem or nil
     if hs == nil or hs.placeables == nil then miss("husbandrySystem") return 0 end
-    local n = 0
+    local n, withStorage = 0, 0
     for _, p in pairs(hs.placeables) do
         local key = string.format("%s.husbandries.husbandry(%d)", base, n)
         w.str(key .. "#key", placeableKey(p, "pen" .. n))
@@ -235,89 +235,132 @@ local function writeHusbandries(w, base)
         local storage = p.spec_husbandry ~= nil and p.spec_husbandry.storage or nil
         if storage ~= nil then
             writeFills(w, key .. ".storage", storageFills(storage), nil, false)
-        else
-            miss("husbandryStorage")
+            withStorage = withStorage + 1
         end
         n = n + 1
     end
+    -- Weiden haben kein Stall-Lager. Melden nur, wenn es nirgends eins gibt.
+    if n > 0 and withStorage == 0 then miss("husbandryStorage") end
     return n
 end
 
-local function storageKind(placeable)
-    if placeable == nil then return "other" end
-    if placeable.spec_husbandry ~= nil then return "husbandry" end
-    if placeable.spec_productionPoint ~= nil then return "production" end
-    if placeable.spec_silo ~= nil or placeable.spec_siloExtension ~= nil then return "silo" end
+--- Art eines Lagers aus dem Namen der Spezialisierung (spec_silo, spec_productionPoint …)
+local KIND_RANK = { production = 4, silo = 3, manure = 2, other = 1 }
+
+local function kindFromSpec(specName)
+    local s = string.lower(specName)
+    if string.find(s, "production", 1, true) then return "production" end
+    if string.find(s, "manure", 1, true) then return "manure" end
+    if string.find(s, "silo", 1, true) then return "silo" end
     return "other"
 end
 
-local function writeStorages(w, base)
-    local sys = g_currentMission ~= nil and g_currentMission.storageSystem or nil
-    if sys == nil then miss("storageSystem") return 0 end
-    local list = call(sys, "getStorages") or sys.storages
-    if type(list) ~= "table" then miss("storages") return 0 end
+--- Storage-Objekte in einer Spezialisierung finden (storage, storages, productionPoint.storage)
+local function collectStorages(spec, out)
+    if type(spec) ~= "table" then return end
+    local function add(s)
+        if type(s) == "table" and type(s.fillLevels) == "table" then table.insert(out, s) end
+    end
+    add(spec.storage)
+    if type(spec.storages) == "table" then
+        for k, v in pairs(spec.storages) do
+            add(v)
+            add(k)
+        end
+    end
+    if type(spec.productionPoint) == "table" then add(spec.productionPoint.storage) end
+    if type(spec.manureHeap) == "table" then add(spec.manureHeap) end
+end
 
-    -- Je nach Version sind Storages Schlüssel oder Werte der Tabelle
-    local seen, storages = {}, {}
-    for k, v in pairs(list) do
-        local s = (type(v) == "table" and v.fillLevels ~= nil) and v or ((type(k) == "table" and k.fillLevels ~= nil) and k or nil)
-        if s ~= nil and not seen[s] then
-            seen[s] = true
-            table.insert(storages, s)
+--- Lager über die Gebäude suchen. So kennen wir Name, Art und einen festen Schlüssel.
+--- Ställe lassen wir aus, deren Lager stehen schon bei den Tieren.
+local function writeStorages(w, base)
+    local ps = g_currentMission ~= nil and g_currentMission.placeableSystem or nil
+    if ps == nil or type(ps.placeables) ~= "table" then miss("placeableSystem") return 0 end
+
+    local seen, groups = {}, {}
+    for idx, p in pairs(ps.placeables) do
+        if type(p) == "table" then
+            local isPen = false
+            local found = {}
+            for k, v in pairs(p) do
+                if type(k) == "string" and string.sub(k, 1, 5) == "spec_" and type(v) == "table" then
+                    if string.sub(k, 1, 14) == "spec_husbandry" then isPen = true end
+                    local list = {}
+                    collectStorages(v, list)
+                    for _, st in ipairs(list) do table.insert(found, { storage = st, kind = kindFromSpec(k) }) end
+                end
+            end
+            for _, f in ipairs(found) do
+                local st = f.storage
+                if not seen[st] then
+                    seen[st] = true
+                    if not isPen then
+                        local key = placeableKey(p, "placeable" .. tostring(p.id or idx))
+                        local g = groups[key]
+                        if g == nil then
+                            g = { placeable = p, kind = f.kind, fills = {} }
+                            groups[key] = g
+                        elseif KIND_RANK[f.kind] > KIND_RANK[g.kind] then
+                            g.kind = f.kind
+                        end
+                        for _, fill in ipairs(storageFills(st)) do
+                            local e = g.fills[fill.name]
+                            if e == nil then
+                                g.fills[fill.name] = { name = fill.name, level = fill.level, capacity = fill.capacity }
+                            else
+                                e.level = e.level + fill.level
+                                if fill.capacity ~= nil then e.capacity = (e.capacity or 0) + fill.capacity end
+                            end
+                        end
+                    end
+                end
+            end
         end
     end
 
-    -- Pro Gebäude zusammenfassen (ein Silo kann mehrere Storages haben). So bleiben die
-    -- Schlüssel stabil, egal in welcher Reihenfolge das Spiel die Storages liefert.
-    local groups, order, loose = {}, {}, 0
-    for _, s in ipairs(storages) do
-        local owner = s.owningPlaceable
-        local farmId = tonumber(call(s, "getOwnerFarmId")) or tonumber(s.ownerFarmId) or 0
-        if farmId == 0 and owner ~= nil then farmId = tonumber(call(owner, "getOwnerFarmId")) or 0 end
-        local fills = storageFills(s)
+    local order = {}
+    for key, g in pairs(groups) do
+        local farmId = tonumber(call(g.placeable, "getOwnerFarmId")) or 0
         local hasContent = false
-        for _, f in ipairs(fills) do
+        for _, f in pairs(g.fills) do
             if f.level > 0.5 then hasContent = true break end
         end
         -- Leere Lager ohne Besitzer lassen wir weg, sonst wird die Datei unnötig groß
         if farmId > 0 or hasContent then
-            local pk = placeableKey(owner, nil)
-            if pk == nil then
-                loose = loose + 1
-                pk = "storage" .. loose
-            end
-            local g = groups[pk]
-            if g == nil then
-                g = { farmId = farmId, name = placeableName(owner), kind = storageKind(owner), fills = {} }
-                groups[pk] = g
-                table.insert(order, pk)
-            end
-            for _, f in ipairs(fills) do
-                local e = g.fills[f.name]
-                if e == nil then
-                    g.fills[f.name] = { name = f.name, level = f.level, capacity = f.capacity }
-                else
-                    e.level = e.level + f.level
-                    if f.capacity ~= nil then e.capacity = (e.capacity or 0) + f.capacity end
-                end
-            end
+            g.farmId = farmId
+            table.insert(order, key)
         end
     end
     table.sort(order)
 
     local n = 0
-    for _, pk in ipairs(order) do
-        local g = groups[pk]
+    for _, key in ipairs(order) do
+        local g = groups[key]
         local fills = {}
         for _, f in pairs(g.fills) do table.insert(fills, f) end
         table.sort(fills, function(a, b) return a.name < b.name end)
-        local key = string.format("%s.storages.storage(%d)", base, n)
-        w.str(key .. "#key", pk)
-        w.int(key .. "#farmId", g.farmId)
-        w.str(key .. "#name", g.name)
-        w.str(key .. "#kind", g.kind)
-        writeFills(w, key, fills, nil, true)
+        local k = string.format("%s.storages.storage(%d)", base, n)
+        w.str(k .. "#key", key)
+        w.int(k .. "#farmId", g.farmId)
+        w.str(k .. "#name", placeableName(g.placeable))
+        w.str(k .. "#kind", g.kind)
+        writeFills(w, k, fills, nil, true)
         n = n + 1
+    end
+
+    -- Lager im Spiel, die zu keinem Gebäude gefunden wurden und Inhalt haben → nur melden
+    local sys = g_currentMission.storageSystem
+    local list = sys ~= nil and (call(sys, "getStorages") or sys.storages) or nil
+    if type(list) == "table" then
+        for k, v in pairs(list) do
+            local st = (type(v) == "table" and v.fillLevels ~= nil) and v or ((type(k) == "table" and k.fillLevels ~= nil) and k or nil)
+            if st ~= nil and not seen[st] then
+                for _, lvl in pairs(st.fillLevels) do
+                    if (tonumber(lvl) or 0) > 0.5 then miss("unassignedStorages") break end
+                end
+            end
+        end
     end
     return n
 end
