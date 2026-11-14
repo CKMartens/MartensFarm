@@ -16,37 +16,41 @@ declare(strict_types=1);
  */
 
 /** Deutsche Namen der Finanz-Statistiken aus dem Spiel */
+/** Deutsche Namen der Finanz-Arten, wie LS25 sie unter Finanzen anzeigt */
 const FINANCE_STAT_NAMES = [
-    'newVehiclesCost'     => 'Fahrzeugkauf',
-    'soldVehicles'        => 'Fahrzeugverkauf',
-    'newAnimalsCost'      => 'Tierkauf',
-    'soldAnimals'         => 'Tierverkauf',
-    'constructionCost'    => 'Bau und Gebäudekauf',
-    'soldBuildings'       => 'Gebäudeverkauf',
+    'newVehiclesCost'     => 'Neue Fahrzeuge',
+    'soldVehicles'        => 'Verkaufte Fahrzeuge',
+    'newAnimalsCost'      => 'Neue Tiere',
+    'soldAnimals'         => 'Verkaufte Tiere',
+    'constructionCost'    => 'Baukosten',
+    'soldBuildings'       => 'Verkaufte Gebäude',
     'fieldPurchase'       => 'Landkauf',
     'fieldSelling'        => 'Landverkauf',
-    'vehicleRunningCost'  => 'Fahrzeug-Unterhalt',
-    'vehicleLeasingCost'  => 'Leasing',
-    'propertyMaintenance' => 'Gebäude-Unterhalt',
-    'propertyIncome'      => 'Gebäude-Einnahmen',
+    'vehicleRunningCost'  => 'Betriebskosten Fahrzeuge',
+    'vehicleLeasingCost'  => 'Mietkosten Fahrzeuge',
+    'propertyMaintenance' => 'Betriebskosten Gebäude',
+    'propertyIncome'      => 'Einnahmen Gebäude',
     'productionCosts'     => 'Produktionskosten',
-    'soldWood'            => 'Holzverkauf',
-    'soldBales'           => 'Ballenverkauf',
-    'soldWool'            => 'Wollverkauf',
-    'soldMilk'            => 'Milchverkauf',
-    'soldProducts'        => 'Produktverkauf',
-    'purchaseFuel'        => 'Treibstoff',
-    'purchaseSeeds'       => 'Saatgut',
-    'purchaseFertilizer'  => 'Dünger',
-    'purchaseSaplings'    => 'Setzlinge',
-    'purchaseWater'       => 'Wasser',
-    'harvestIncome'       => 'Ernteverkauf',
-    'incomeBga'           => 'Biogasanlage',
-    'missionIncome'       => 'Aufträge',
-    'wagePayment'         => 'Helferlohn',
-    'loanInterest'        => 'Kreditzinsen',
-    'loan'                => 'Kredit',
+    'soldWood'            => 'Verkauftes Holz',
+    'soldBales'           => 'Verkaufte Ballen',
+    'soldWool'            => 'Verkaufte Wolle',
+    'soldMilk'            => 'Verkaufte Milch',
+    'soldProducts'        => 'Verkaufte Erzeugnisse',
+    'purchaseFuel'        => 'Kosten Kraftstoff',
+    'purchaseSeeds'       => 'Kosten Saatgut',
+    'purchaseFertilizer'  => 'Kosten Dünger',
+    'purchaseSaplings'    => 'Kosten Setzlinge',
+    'purchaseWater'       => 'Kosten Wasser',
+    'harvestIncome'       => 'Einnahmen Ernte',
+    'incomeBga'           => 'Einnahmen Biogasanlage',
+    'missionIncome'       => 'Auftragseinnahmen',
+    'wagePayment'         => 'Lohnzahlungen',
     'other'               => 'Sonstiges',
+    'loanInterest'        => 'Bankzinsen',
+    'loan'                => 'Darlehenskapital',
+    'irrigationUpkeep'    => 'Bewässerung',
+    // Kein Posten im Spiel: z. B. Diesel an der Tankstelle kaufen. Taucht in LS25 unter Finanzen nirgends auf.
+    'expenses'            => 'Einkauf, ohne Angabe',
 ];
 
 const SUGGESTION_KINDS = [
@@ -172,6 +176,14 @@ function finance_stat_category(string $stat, float $amount): ?int
 
 // ---------------------------------------------------------------- Import
 
+/** Was das Spiel zu einer Art gemeldet hat: stat => ['type_id', 'title', 'text'] */
+function finance_stat_info(): array
+{
+    $raw = setting_get('mf_stat_info');
+    $info = $raw ? json_decode($raw, true) : null;
+    return is_array($info) ? $info : [];
+}
+
 /** Geldbewegungen aus der Export-Mod übernehmen (Summen je Sitzung, Hof, Tag und Art) */
 function import_game_finances(array $fin, int $savegameId, string $now): void
 {
@@ -186,9 +198,16 @@ function import_game_finances(array $fin, int $savegameId, string $now): void
                 [$savegameId, $session, $d['farm_id'], $d['day'], $stat, round($v['amount'], 2), max(0, $v['count']), $now]);
         }
     }
-    if ($fin['game_stats']) {
-        setting_set('mf_game_stats', json_encode($fin['game_stats']));
+    // Kennung und Titel je Art merken (ab Mod 0.3.1), für die Seite Buchungssätze und die Prüfung
+    $info = finance_stat_info();
+    foreach ($fin['days'] as $d) {
+        foreach ($d['stats'] as $stat => $v) {
+            if (($v['type_id'] ?? null) !== null || ($v['title'] ?? null) !== null) {
+                $info[$stat] = ['type_id' => $v['type_id'], 'title' => $v['title'], 'text' => $v['text']];
+            }
+        }
     }
+    setting_set('mf_stat_info', json_encode($info));
 }
 
 /** Farmland-Besitzer abgleichen. Wechsel → Vorschlag Landkauf (neuer Besitzer) bzw. Landverkauf (alter). */

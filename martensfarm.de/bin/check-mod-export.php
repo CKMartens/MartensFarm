@@ -85,16 +85,10 @@ try {
             foreach ($fin['days'] as $d) {
                 $parts = [];
                 foreach ($d['stats'] as $stat => $v) {
-                    $parts[] = $stat . ' ' . fmt_num($v['amount']) . ' (' . $v['count'] . 'x)';
+                    $extra = array_filter([$v['type_id'] ?? null, $v['title'] ?? null, isset($v['text']) ? '„' . $v['text'] . '“' : null]);
+                    $parts[] = $stat . ' ' . fmt_num($v['amount']) . ' (' . $v['count'] . 'x' . ($extra ? ', ' . implode(' ', $extra) : '') . ')';
                 }
                 printf("       Hof %-3d Tag %-4d %s\n", $d['farm_id'], $d['day'], implode(', ', $parts));
-            }
-            foreach ($fin['game_stats'] as $farmId => $row) {
-                $parts = [];
-                foreach ($row as $k => $v) {
-                    $parts[] = $k . ' ' . fmt_num($v);
-                }
-                printf("       Spiel-Statistik heute Hof %-3d %s\n", $farmId, $parts ? implode(', ', $parts) : '(leer)');
             }
         }
         echo $verbose ? '' : "       (mit -v auch leere Ställe und Lager)\n";

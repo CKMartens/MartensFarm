@@ -1,5 +1,5 @@
 <?php
-/** @var array $cats @var array $used @var array $stats @var array $seen @var array $map */
+/** @var array $cats @var array $used @var array $stats @var array $seen @var array $map @var array $info */
 $groups = ['income' => 'Einnahmen', 'expense' => 'Ausgaben'];
 ?>
 <header class="page-head">
@@ -63,7 +63,10 @@ $groups = ['income' => 'Einnahmen', 'expense' => 'Ausgaben'];
                 <tbody>
                 <?php foreach ($stats as $stat): $m = $map[$stat] ?? null; $cur = $m === null ? 'auto' : ($m['is_ignored'] ? 'ignore' : ($m['category_id'] ?? 'auto')); ?>
                     <tr>
-                        <td><?= e(stat_name($stat)) ?><br><code class="small"><?= e($stat) ?></code></td>
+                        <td><?= e(stat_name($stat)) ?><br><code class="small"><?= e($stat) ?></code>
+                            <?php if (!empty($info[$stat])): $i = $info[$stat]; ?>
+                                <br><span class="muted small">LS25: <?= e(trim(($i['text'] ?? '') . ' ' . (($i['type_id'] ?? '') !== '' ? '(' . $i['type_id'] . ')' : ''))) ?></span>
+                            <?php endif; ?></td>
                         <td class="num"><?= isset($seen[$stat]) ? e(fmt_money((float) $seen[$stat]['amount'])) . '<br><span class="muted small">' . (int) $seen[$stat]['n'] . '×</span>' : '<span class="muted">–</span>' ?></td>
                         <td>
                             <select name="map[<?= e($stat) ?>]" aria-label="Buchungssatz für <?= e(stat_name($stat)) ?>">

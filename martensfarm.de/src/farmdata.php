@@ -214,7 +214,14 @@ function parse_mf_export(SimpleXMLElement $mf): array
             foreach ($d->stat ?? [] as $st) {
                 $name = mb_substr((string) $st['name'], 0, 50);
                 if ($name !== '') {
-                    $stats[$name] = ['amount' => (float) $st['amount'], 'count' => (int) $st['count']];
+                    $stats[$name] = [
+                        'amount'  => (float) $st['amount'],
+                        'count'   => (int) $st['count'],
+                        // ab 0.3.1: interne Kennung und Titel der Geldart, z. B. OTHER#9 / finance_other / „Sonstiges“
+                        'type_id' => isset($st['typeId']) ? mb_substr((string) $st['typeId'], 0, 60) : null,
+                        'title'   => isset($st['title']) ? mb_substr((string) $st['title'], 0, 80) : null,
+                        'text'    => isset($st['text']) ? mb_substr((string) $st['text'], 0, 80) : null,
+                    ];
                 }
             }
             $days[] = ['farm_id' => (int) $d['farmId'], 'day' => (int) $d['day'], 'stats' => $stats];
