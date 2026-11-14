@@ -12,9 +12,16 @@
 --   * was eine Spielversion nicht liefert, fehlt einfach und landet in <diag missing="...">.
 
 MartensFarmExport = {}
-MartensFarmExport.VERSION = "0.2.1"
-MartensFarmExport.SCHEMA = 2
+MartensFarmExport.VERSION = "0.3.0"
+MartensFarmExport.SCHEMA = 3
 MartensFarmExport.hooked = false
+MartensFarmExport.moneyHooked = false
+-- Finanzen: wie viele Spieltage die Mod im Speicher behält (die App liest bei jedem Save alles neu ein)
+MartensFarmExport.KEEP_DAYS = 14
+-- Kennung dieses Serverstarts. Nach einem Neustart zählt das Kassenbuch der Mod von vorn.
+MartensFarmExport.session = nil
+-- ledger[farmId][day][stat] = { amount = Summe, count = Anzahl Buchungen }
+MartensFarmExport.ledger = {}
 
 local missing = {}
 local unpack = unpack or table.unpack
@@ -365,6 +372,107 @@ local function writeStorages(w, base)
     return n
 end
 
+local function currentDay()
+    local env = g_currentMission ~= nil and g_currentMission.environment or nil
+    return env ~= nil and tonumber(env.currentDay) or 0
+end
+
+--- Name der Finanz-Statistik einer Geldbewegung (newVehiclesCost, purchaseFuel, harvestIncome …)
+local function moneyTypeStat(moneyType)
+    if type(moneyType) == "table" then
+        if type(moneyType.statistic) == "string" and moneyType.statistic ~= "" then return moneyType.statistic end
+        if type(moneyType.name) == "string" and moneyType.name ~= "" then return moneyType.name end
+        if moneyType.id ~= nil then return "type" .. tostring(moneyType.id) end
+    elseif type(moneyType) == "string" and moneyType ~= "" then
+        return moneyType
+    elseif type(moneyType) == "number" then
+        return "type" .. tostring(moneyType)
+    end
+    return "other"
+end
+
+--- Hängt hinter g_currentMission:addMoney(amount, farmId, moneyType, ...).
+--- Zählt jede Geldbewegung je Hof, Spieltag und Art mit. Verändert nichts am Spiel.
+function MartensFarmExport.onAddMoney(_, amount, farmId, moneyType)
+    if not isServer() then return end
+    local ok, err = pcall(function()
+        local a = tonumber(amount)
+        local f = tonumber(farmId) or 0
+        if a == nil or a == 0 or f < 1 then return end
+        local day = currentDay()
+        local stat = moneyTypeStat(moneyType)
+        local byFarm = MartensFarmExport.ledger[f]
+        if byFarm == nil then byFarm = {} MartensFarmExport.ledger[f] = byFarm end
+        local byDay = byFarm[day]
+        if byDay == nil then byDay = {} byFarm[day] = byDay end
+        local e = byDay[stat]
+        if e == nil then e = { amount = 0, count = 0 } byDay[stat] = e end
+        e.amount = e.amount + a
+        e.count = e.count + 1
+    end)
+    if not ok then log("Finanzen: %s", tostring(err)) end
+end
+
+local function writeFinances(w, base)
+    if not MartensFarmExport.moneyHooked then miss("moneyHook") return 0 end
+    local k = base .. ".finances"
+    w.str(k .. "#session", MartensFarmExport.session or "")
+    w.int(k .. "#keepDays", MartensFarmExport.KEEP_DAYS)
+    local today = currentDay()
+    local farmIds = {}
+    for farmId in pairs(MartensFarmExport.ledger) do table.insert(farmIds, farmId) end
+    table.sort(farmIds)
+    local n = 0
+    for _, farmId in ipairs(farmIds) do
+        local byFarm = MartensFarmExport.ledger[farmId]
+        local days = {}
+        for day in pairs(byFarm) do
+            if day < today - MartensFarmExport.KEEP_DAYS then
+                byFarm[day] = nil   -- alte Tage aufräumen
+            else
+                table.insert(days, day)
+            end
+        end
+        table.sort(days)
+        for _, day in ipairs(days) do
+            local dk = string.format("%s.day(%d)", k, n)
+            w.int(dk .. "#farmId", farmId)
+            w.int(dk .. "#day", day)
+            local stats = {}
+            for stat in pairs(byFarm[day]) do table.insert(stats, stat) end
+            table.sort(stats)
+            for i, stat in ipairs(stats) do
+                local e = byFarm[day][stat]
+                local sk = string.format("%s.stat(%d)", dk, i - 1)
+                w.str(sk .. "#name", stat)
+                w.str(sk .. "#amount", num(e.amount))
+                w.int(sk .. "#count", e.count)
+            end
+            n = n + 1
+        end
+    end
+
+    -- Zum Vergleich: die Finanz-Statistik des Spiels für heute, roh (nur Zahlenfelder)
+    if g_farmManager ~= nil and type(g_farmManager.farms) == "table" then
+        local i = 0
+        for _, farm in pairs(g_farmManager.farms) do
+            local id = tonumber(farm.farmId) or 0
+            local fin = id > 0 and farm.stats ~= nil and farm.stats.finances or nil
+            if type(fin) == "table" then
+                local gk = string.format("%s.gameStats(%d)", k, i)
+                w.int(gk .. "#farmId", id)
+                for name, v in pairs(fin) do
+                    if type(name) == "string" and type(v) == "number" and v ~= 0 then
+                        w.str(gk .. "#" .. name, num(v))
+                    end
+                end
+                i = i + 1
+            end
+        end
+    end
+    return n
+end
+
 function MartensFarmExport.writeBlock(xmlFile, rootKey, missionInfo)
     missing = {}
     local w = writer(xmlFile)
@@ -381,6 +489,7 @@ function MartensFarmExport.writeBlock(xmlFile, rootKey, missionInfo)
         { "farms", function() return writeFarms(w, base) end },
         { "husbandries", function() return writeHusbandries(w, base) end },
         { "storages", function() return writeStorages(w, base) end },
+        { "finances", function() return writeFinances(w, base) end },
     }
     for _, part in ipairs(parts) do
         local ok, res = pcall(part[2])
@@ -409,7 +518,7 @@ function MartensFarmExport.onCareerSaved(missionInfo)
     end
     local ok, counts = pcall(MartensFarmExport.writeBlock, xmlFile, missionInfo.xmlKey or "careerSavegame", missionInfo)
     if ok then
-        log("Block <martensFarm> geschrieben: %d Höfe, %d Ställe, %d Lager.", counts.farms or 0, counts.husbandries or 0, counts.storages or 0)
+        log("Block <martensFarm> geschrieben: %d Höfe, %d Ställe, %d Lager, %d Finanz-Tage.", counts.farms or 0, counts.husbandries or 0, counts.storages or 0, counts.finances or 0)
     else
         log("Fehler beim Schreiben: %s", tostring(counts))
     end
@@ -423,6 +532,19 @@ function MartensFarmExport:loadMap()
     end
     FSCareerMissionInfo.saveToXMLFile = Utils.appendedFunction(FSCareerMissionInfo.saveToXMLFile, MartensFarmExport.onCareerSaved)
     MartensFarmExport.hooked = true
+
+    -- Geldbewegungen mitzählen. addMoney gibt es am Spiel-Objekt (Klasse FSBaseMission).
+    MartensFarmExport.session = getDate("%Y%m%d%H%M%S")
+    if FSBaseMission ~= nil and type(FSBaseMission.addMoney) == "function" then
+        FSBaseMission.addMoney = Utils.appendedFunction(FSBaseMission.addMoney, MartensFarmExport.onAddMoney)
+        MartensFarmExport.moneyHooked = true
+        -- Falls das Spiel-Objekt die Funktion schon als eigenes Feld hat, auch dort einhängen
+        if g_currentMission ~= nil and rawget(g_currentMission, "addMoney") ~= nil then
+            g_currentMission.addMoney = Utils.appendedFunction(g_currentMission.addMoney, MartensFarmExport.onAddMoney)
+        end
+    else
+        log("FSBaseMission.addMoney nicht gefunden, Finanzen werden nicht mitgezählt.")
+    end
     log("Version %s geladen (Server: %s).", MartensFarmExport.VERSION, tostring(isServer()))
 end
 

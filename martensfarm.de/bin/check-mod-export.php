@@ -76,6 +76,27 @@ try {
                 printf("       Hof %-3d %-10s %-30s %s\n", $s['farm_id'], $s['kind'], mb_substr($s['name'], 0, 30), implode(', ', array_slice($fills, 0, 6)));
             }
         }
+        // Ab Schema 3: Geldbewegungen je Hof, Spieltag und Art
+        if ($mf['finances'] === null) {
+            echo "[INFO] Keine Finanzen im Block (erst ab Mod 0.3).\n";
+        } else {
+            $fin = $mf['finances'];
+            echo '       Finanzen: Sitzung ' . $fin['session'] . ', ' . count($fin['days']) . " Hof-Tage\n";
+            foreach ($fin['days'] as $d) {
+                $parts = [];
+                foreach ($d['stats'] as $stat => $v) {
+                    $parts[] = $stat . ' ' . fmt_num($v['amount']) . ' (' . $v['count'] . 'x)';
+                }
+                printf("       Hof %-3d Tag %-4d %s\n", $d['farm_id'], $d['day'], implode(', ', $parts));
+            }
+            foreach ($fin['game_stats'] as $farmId => $row) {
+                $parts = [];
+                foreach ($row as $k => $v) {
+                    $parts[] = $k . ' ' . fmt_num($v);
+                }
+                printf("       Spiel-Statistik heute Hof %-3d %s\n", $farmId, $parts ? implode(', ', $parts) : '(leer)');
+            }
+        }
         echo $verbose ? '' : "       (mit -v auch leere Ställe und Lager)\n";
     }
 } catch (Throwable $e) {
