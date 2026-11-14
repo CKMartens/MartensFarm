@@ -1,6 +1,19 @@
 <?php
 /** @var array $user @var ?array $snap @var ?array $lastOk @var array $players @var array $farms @var array $moneyHistory @var array $fleet @var array $repairs @var int $threshold @var array $pens @var int $animalCount @var array $penAlerts @var ?array $mfInfo @var array $tips */
-$online = $snap && (int) $snap['ok'] === 1 && strtotime($snap['fetched_at']) > time() - 900;
+// Server-Kachel: unterscheiden zwischen "Server antwortet", "Server antwortet nicht" und "wir haben länger nicht nachgesehen"
+$fetchAge = $snap ? time() - strtotime($snap['fetched_at']) : null;
+$stale = $fetchAge !== null && $fetchAge > 900;          // länger als 15 Minuten kein Abruf (Cron alle 5 Min.)
+if (!$snap) {
+    $serverState = ['muted', 'Noch kein Abruf', 'Der erste Abruf kommt mit dem nächsten Cronjob.'];
+} elseif ((int) $snap['ok'] !== 1) {
+    $serverState = ['bad', 'Nicht erreichbar', 'Abruf ' . fmt_ago($snap['fetched_at']) . ' fehlgeschlagen'
+        . ($lastOk ? ' · zuletzt online ' . fmt_ago($lastOk['fetched_at']) : '')];
+} elseif ($stale) {
+    $serverState = ['warn', 'Zuletzt online', 'Letzter Abruf ' . fmt_ago($snap['fetched_at']) . ', danach keiner mehr'];
+} else {
+    $serverState = ['ok', 'Online', 'Abruf ' . fmt_ago($snap['fetched_at'])];
+}
+$gameVersion = $lastOk['game_version'] ?? null;
 $myFarm = null;
 foreach ($farms as $f) {
     if ((int) $f['farm_id'] === (int) $farmId) {
@@ -37,19 +50,21 @@ if (count($moneyHistory) >= 2) {
 <div class="alert alert-info small">
     Kontostände, Fahrzeuge, Tiere und Lager kommen aus dem Spielstand und werden nur aktualisiert, wenn der Server speichert.
     Sie können deshalb bis zu 60 Minuten hinterherhinken.<?php if ($mfInfo): ?> Letzter Save: <strong><?= e(fmt_datetime($mfInfo['written_at'])) ?></strong> (<?= e(fmt_ago($mfInfo['written_at'])) ?>).<?php endif; ?>
-    Live sind nur Server-Status, Spieler und Uhrzeit.
+    Server-Status, Spieler und Uhrzeit fragt die App dagegen alle 5 Minuten direkt beim Server ab.
 </div>
 
 <section class="tiles">
     <div class="tile">
         <div class="tile-label">Server</div>
-        <div class="tile-value <?= $online ? 'ok' : 'bad' ?>"><?= $online ? 'Online' : 'Keine Daten' ?></div>
-        <div class="tile-sub">Abruf <?= e(fmt_ago($snap['fetched_at'] ?? null)) ?><?= $snap && !$snap['ok'] ? ' · ' . e($snap['error']) : '' ?></div>
+        <div class="tile-value <?= e($serverState[0]) ?>"><?= e($serverState[1]) ?></div>
+        <div class="tile-sub"><?= e($serverState[2]) ?><?= $gameVersion ? ' · LS25 ' . e($gameVersion) : '' ?></div>
+        <?php if ($snap && (int) $snap['ok'] !== 1 && $snap['error']): ?><div class="tile-sub small bad"><?= e($snap['error']) ?></div><?php endif; ?>
+        <?php if ($stale && has_role($user, 'admin')): ?><div class="tile-sub warn">Der Cronjob ruft normalerweise alle 5 Min. ab, bitte prüfen.</div><?php endif; ?>
     </div>
     <div class="tile">
         <div class="tile-label">Spieler online</div>
         <div class="tile-value"><?= (int) ($lastOk['players_online'] ?? 0) ?> / <?= (int) ($lastOk['players_capacity'] ?? 0) ?></div>
-        <div class="tile-sub">Uhrzeit im Spiel: <?= e(fmt_daytime(isset($lastOk['day_time_ms']) ? (int) $lastOk['day_time_ms'] : null)) ?></div>
+        <div class="tile-sub">Uhrzeit im Spiel: <?= e(fmt_daytime(isset($lastOk['day_time_ms']) ? (int) $lastOk['day_time_ms'] : null)) ?><?= $stale && $lastOk ? ' · Stand ' . e(fmt_ago($lastOk['fetched_at'])) : '' ?></div>
     </div>
     <div class="tile">
         <div class="tile-label">Kontostand <?= e($myFarm['name'] ?? '') ?></div>
