@@ -49,4 +49,4 @@ $map = finance_stat_map();
 $stats = array_unique(array_merge(array_keys(FINANCE_STAT_NAMES), array_keys($map), array_map('strval', array_keys($seen))));
 usort($stats, fn($a, $b) => [isset($seen[$b]) ? 1 : 0, stat_name($a)] <=> [isset($seen[$a]) ? 1 : 0, stat_name($b)]);
 
-render('booking_categories', compact('user', 'cats', 'used', 'stats', 'seen', 'map') + ['title' => 'Buchungssätze', 'nav' => 'buchungssaetze']);
+render('booking_categories', compact('user', 'cats', 'used', 'stats', 'seen', 'map') + ['info' => finance_stat_info()] + ['title' => 'Buchungssätze', 'nav' => 'buchungssaetze']);

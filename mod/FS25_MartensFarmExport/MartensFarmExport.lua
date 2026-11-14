@@ -12,7 +12,7 @@
 --   * was eine Spielversion nicht liefert, fehlt einfach und landet in <diag missing="...">.
 
 MartensFarmExport = {}
-MartensFarmExport.VERSION = "0.3.0"
+MartensFarmExport.VERSION = "0.3.1"
 MartensFarmExport.SCHEMA = 3
 MartensFarmExport.hooked = false
 MartensFarmExport.moneyHooked = false
@@ -378,17 +378,40 @@ local function currentDay()
 end
 
 --- Name der Finanz-Statistik einer Geldbewegung (newVehiclesCost, purchaseFuel, harvestIncome …)
-local function moneyTypeStat(moneyType)
+--- plus interne Kennung und Titel der Geldart, damit wir sehen, was LS25 bei allgemeinen Arten wie "expenses" schickt
+local typeNameCache = setmetatable({}, { __mode = "k" })
+
+local function moneyTypeInfo(moneyType)
+    local stat, typeId, title = "other", nil, nil
     if type(moneyType) == "table" then
-        if type(moneyType.statistic) == "string" and moneyType.statistic ~= "" then return moneyType.statistic end
-        if type(moneyType.name) == "string" and moneyType.name ~= "" then return moneyType.name end
-        if moneyType.id ~= nil then return "type" .. tostring(moneyType.id) end
+        if type(moneyType.statistic) == "string" and moneyType.statistic ~= "" then
+            stat = moneyType.statistic
+        elseif type(moneyType.name) == "string" and moneyType.name ~= "" then
+            stat = moneyType.name
+        elseif moneyType.id ~= nil then
+            stat = "type" .. tostring(moneyType.id)
+        end
+        if moneyType.id ~= nil then typeId = tostring(moneyType.id) end
+        if type(moneyType.title) == "string" then title = moneyType.title end
+        -- Name der Konstante suchen (MoneyType.PURCHASE_FUEL …), falls es die Tabelle gibt
+        local cached = typeNameCache[moneyType]
+        if cached == nil then
+            cached = false
+            if type(MoneyType) == "table" then
+                for k, v in pairs(MoneyType) do
+                    if v == moneyType and type(k) == "string" then cached = k break end
+                end
+            end
+            typeNameCache[moneyType] = cached
+        end
+        if cached then typeId = cached .. (typeId and ("#" .. typeId) or "") end
     elseif type(moneyType) == "string" and moneyType ~= "" then
-        return moneyType
+        stat = moneyType
     elseif type(moneyType) == "number" then
-        return "type" .. tostring(moneyType)
+        stat = "type" .. tostring(moneyType)
+        typeId = tostring(moneyType)
     end
-    return "other"
+    return stat, typeId, title
 end
 
 --- Hängt hinter g_currentMission:addMoney(amount, farmId, moneyType, ...).
@@ -400,13 +423,15 @@ function MartensFarmExport.onAddMoney(_, amount, farmId, moneyType)
         local f = tonumber(farmId) or 0
         if a == nil or a == 0 or f < 1 then return end
         local day = currentDay()
-        local stat = moneyTypeStat(moneyType)
+        local stat, typeId, title = moneyTypeInfo(moneyType)
         local byFarm = MartensFarmExport.ledger[f]
         if byFarm == nil then byFarm = {} MartensFarmExport.ledger[f] = byFarm end
         local byDay = byFarm[day]
         if byDay == nil then byDay = {} byFarm[day] = byDay end
         local e = byDay[stat]
         if e == nil then e = { amount = 0, count = 0 } byDay[stat] = e end
+        if typeId ~= nil then e.typeId = typeId end
+        if title ~= nil then e.title = title end
         e.amount = e.amount + a
         e.count = e.count + 1
     end)
@@ -447,29 +472,20 @@ local function writeFinances(w, base)
                 w.str(sk .. "#name", stat)
                 w.str(sk .. "#amount", num(e.amount))
                 w.int(sk .. "#count", e.count)
+                if e.typeId ~= nil then w.str(sk .. "#typeId", e.typeId) end
+                if e.title ~= nil then
+                    w.str(sk .. "#title", e.title)
+                    -- Übersetzung (Sprache des Servers), wenn es den Text gibt
+                    if g_i18n ~= nil then
+                        local okT, txt = pcall(function() return g_i18n:getText(e.title) end)
+                        if okT and type(txt) == "string" and txt ~= "" and txt ~= e.title then w.str(sk .. "#text", txt) end
+                    end
+                end
             end
             n = n + 1
         end
     end
 
-    -- Zum Vergleich: die Finanz-Statistik des Spiels für heute, roh (nur Zahlenfelder)
-    if g_farmManager ~= nil and type(g_farmManager.farms) == "table" then
-        local i = 0
-        for _, farm in pairs(g_farmManager.farms) do
-            local id = tonumber(farm.farmId) or 0
-            local fin = id > 0 and farm.stats ~= nil and farm.stats.finances or nil
-            if type(fin) == "table" then
-                local gk = string.format("%s.gameStats(%d)", k, i)
-                w.int(gk .. "#farmId", id)
-                for name, v in pairs(fin) do
-                    if type(name) == "string" and type(v) == "number" and v ~= 0 then
-                        w.str(gk .. "#" .. name, num(v))
-                    end
-                end
-                i = i + 1
-            end
-        end
-    end
     return n
 end
 
