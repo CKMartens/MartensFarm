@@ -18,6 +18,7 @@ $items = [
     <meta name="robots" content="noindex, nofollow">
     <title><?= e(($title ?? '') . ' · ' . $appName) ?></title>
     <link rel="stylesheet" href="<?= e(url('assets/app.css')) ?>">
+    <?php require __DIR__ . '/favicon.php'; ?>
 </head>
 <body>
 <div class="shell">
