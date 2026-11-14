@@ -39,7 +39,7 @@ if (count($moneyHistory) >= 2) {
         <h1>Moin, <?= e($user['nickname']) ?>! 👋</h1>
         <p class="muted"><?= e($lastOk['server_name'] ?? 'Server') ?> · <?= e($lastOk['map_name'] ?? '') ?></p>
     </div>
-    <?php if (has_role($user, 'admin')): ?>
+    <?php if (can($user, 'admin.settings')): ?>
         <form method="post" action="<?= e(url('admin/import')) ?>">
             <?= csrf_field() ?>
             <button class="btn btn-ghost" type="submit">Jetzt abrufen</button>

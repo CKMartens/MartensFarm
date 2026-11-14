@@ -1,4 +1,4 @@
--- MartensFarm Hof-Management – Datenbankschema (Stand 0.2)
+-- MartensFarm Hof-Management – Datenbankschema (Stand 0.3)
 -- Bestehende Installation aktualisieren: bin/update-db.php (führt update-*.sql aus)
 -- MariaDB 10.6+ / MySQL 8+, Zeichensatz utf8mb4
 
@@ -14,19 +14,51 @@ CREATE TABLE IF NOT EXISTS farms (
     updated_at   DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Rollen sind Daten: Anzeigename und Beschreibung pflegt der Admin unter „Rollen & Rechte“.
+-- is_system = mitgelieferte Rolle, kann umbenannt, aber nicht gelöscht werden.
+CREATE TABLE IF NOT EXISTS roles (
+    role_key     VARCHAR(30)  NOT NULL PRIMARY KEY,
+    name         VARCHAR(50)  NOT NULL,
+    description  VARCHAR(255) NOT NULL DEFAULT '',
+    sort_order   SMALLINT     NOT NULL DEFAULT 100,
+    is_system    TINYINT(1)   NOT NULL DEFAULT 0,
+    created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Welche Rolle welches Recht hat (Rechte-Katalog: src/permissions.php). "admin" darf immer alles.
+CREATE TABLE IF NOT EXISTS role_permissions (
+    role_key    VARCHAR(30) NOT NULL,
+    permission  VARCHAR(50) NOT NULL,
+    PRIMARY KEY (role_key, permission),
+    CONSTRAINT fk_roleperm_role FOREIGN KEY (role_key) REFERENCES roles (role_key) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO roles (role_key, name, description, sort_order, is_system) VALUES
+    ('admin',       'Admin',       'Darf alles, auch Nutzer, Rollen und Einstellungen verwalten.', 10, 1),
+    ('hofleiter',   'Farmmanager', 'Organisiert den Betrieb: bucht, verteilt Aufgaben, stellt den Spielmonat ein.', 20, 1),
+    ('mitarbeiter', 'Spieler',     'Spielt mit: sieht die Finanzen, bucht und arbeitet Aufgaben ab.', 30, 1),
+    ('gast',        'Gast',        'Darf nur schauen.', 40, 1);
+
+INSERT IGNORE INTO role_permissions (role_key, permission) VALUES
+    ('hofleiter', 'game.calendar'), ('hofleiter', 'finance.view'), ('hofleiter', 'finance.book'),
+    ('hofleiter', 'tasks.create'), ('hofleiter', 'tasks.assign'), ('hofleiter', 'tasks.work'),
+    ('mitarbeiter', 'finance.view'), ('mitarbeiter', 'finance.book'), ('mitarbeiter', 'tasks.create'), ('mitarbeiter', 'tasks.work');
+
 CREATE TABLE IF NOT EXISTS users (
     id             INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     name           VARCHAR(100) NOT NULL,
     nickname       VARCHAR(50)  NOT NULL,
-    email          VARCHAR(190) NOT NULL,
-    role           ENUM('admin','hofleiter','mitarbeiter','gast') NOT NULL DEFAULT 'mitarbeiter',
+    email          VARCHAR(190) NULL,                        -- leer = anonymisiert
+    role           VARCHAR(30)  NOT NULL DEFAULT 'mitarbeiter',
     farm_id        TINYINT UNSIGNED NULL,
     is_active      TINYINT(1) NOT NULL DEFAULT 1,
     created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     last_login_at  DATETIME NULL,
+    anonymized_at  DATETIME NULL,
     UNIQUE KEY uq_users_email (email),
     UNIQUE KEY uq_users_nickname (nickname),
-    CONSTRAINT fk_users_farm FOREIGN KEY (farm_id) REFERENCES farms (farm_id) ON DELETE SET NULL
+    CONSTRAINT fk_users_farm FOREIGN KEY (farm_id) REFERENCES farms (farm_id) ON DELETE SET NULL,
+    CONSTRAINT fk_users_role FOREIGN KEY (role) REFERENCES roles (role_key) ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Anmelde-Token: Link und 6-stelliger Code, beides nur als SHA-256-Hash gespeichert

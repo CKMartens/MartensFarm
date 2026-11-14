@@ -89,7 +89,7 @@ try {
 
         case 'POST preise':
             // Aktuellen Spielmonat setzen (der Server liefert ihn nicht mit)
-            $user = require_role('hofleiter');
+            $user = require_permission('game.calendar');
             csrf_check();
             $p = (string) ($_POST['period'] ?? '');
             setting_set('current_period', in_array($p, PERIOD_ORDER, true) ? $p : null);
@@ -100,18 +100,24 @@ try {
 
         case 'GET admin/nutzer':
         case 'POST admin/nutzer':
-            $user = require_role('admin');
+            $user = require_permission('admin.users');
             require APP_ROOT . '/src/pages/users.php';
+            break;
+
+        case 'GET admin/rollen':
+        case 'POST admin/rollen':
+            $user = require_permission('admin.roles');
+            require APP_ROOT . '/src/pages/roles.php';
             break;
 
         case 'GET admin/einstellungen':
         case 'POST admin/einstellungen':
-            $user = require_role('admin');
+            $user = require_permission('admin.settings');
             require APP_ROOT . '/src/pages/settings.php';
             break;
 
         case 'POST admin/import':
-            $user = require_role('admin');
+            $user = require_permission('admin.settings');
             csrf_check();
             $log = run_import(true);
             flash('info', 'Import: ' . implode(' ', $log));

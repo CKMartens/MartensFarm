@@ -31,7 +31,7 @@ MartensFarm/
 - PHP 8.5 ohne Framework, PDO mit Prepared Statements, server-gerendert
 - MariaDB, gehostet unter KeyHelp auf einem Hetzner-Server
 - Cronjob alle 5 Minuten holt `stats.xml` + Savegame-Feeds (`careerSavegame`, `vehicles`, `economy`) – nur lesend, mit Mindestabstand von 240 s
-- Login ohne Passwort (Link + 6-stelliger Code per Mail), Rollen admin > hofleiter > mitarbeiter > gast
+- Login ohne Passwort (Link + 6-stelliger Code per Mail), Rollen als Bündel von Rechten (Admin, Farmmanager, Spieler, Gast, eigene Rollen möglich)
 - Strenge CSP: kein Inline-JS, kein Inline-Style
 
 ```
