@@ -16,6 +16,9 @@ const SETTING_DEFAULTS = [
     'straw_min_pct'             => '10',
     'product_full_pct'          => '90',
     'hide_empty_pens'           => '1',
+    'tasks_auto_repair'         => '1',
+    'tasks_auto_animals'        => '1',
+    'tasks_review_required'     => '1',
 ];
 
 function setting(string $name): string
@@ -93,7 +96,7 @@ function savegame_detect(string $mapId, string $mapTitle, string $savegameName, 
            ON DUPLICATE KEY UPDATE name = VALUES(name), money = VALUES(money), loan = VALUES(loan), archived_at = VALUES(archived_at)', [$current, $now]);
         q('UPDATE farms SET money = NULL, loan = NULL, updated_at = NULL, name = IF(name_locked = 1, name, CONCAT(\'Hof \', farm_id))');
         q('DELETE FROM prices');
-        foreach (['current_period', 'current_day_in_period', 'last_day_time', 'mf_written_at', 'current_game_day'] as $s) {
+        foreach (['current_period', 'current_day_in_period', 'last_day_time', 'mf_written_at', 'mf_imported_at', 'current_game_day'] as $s) {
             setting_set($s, null);
         }
         $log[] = ($known ? 'Savegame gewechselt' : 'Neues Savegame erkannt') . ": {$savegameName} ({$mapId}). Die Kontostände des alten Spielstands sind archiviert.";
@@ -322,6 +325,7 @@ function import_mf_export(array $mf, int $savegameId, string $now, array &$log):
     }
 
     setting_set('mf_written_at', $stamp);
+    setting_set('mf_imported_at', $now);   // wann wir den letzten Save eingelesen haben (für automatische Aufgaben)
     setting_set('mf_info', json_encode([
         'schema' => $mf['schema'], 'mod_version' => $mf['mod_version'], 'written_at' => $mf['written_at'],
         'imported_at' => $now, 'missing' => array_values($mf['missing']),
@@ -366,7 +370,7 @@ function fill_pct(?array $fill): ?float
 }
 
 /**
- * Hinweise für einen Stall. Gibt eine Liste von ['level' => 'warn'|'bad', 'text' => ..] zurück.
+ * Hinweise für einen Stall. Gibt eine Liste von ['key' => food|water|straw|product_<TYP>, 'level' => 'warn'|'bad', 'text' => ..] zurück.
  * Leere Ställe haben keine Hinweise.
  */
 function pen_alerts(array $pen): array
@@ -381,16 +385,16 @@ function pen_alerts(array $pen): array
     $food = (float) $pen['food_total'];
     $perDay = $pen['food_per_day'] !== null ? (float) $pen['food_per_day'] : 0.0;
     if ($food <= 0.5) {
-        $alerts[] = ['level' => 'bad', 'text' => 'Kein Futter mehr'];
+        $alerts[] = ['key' => 'food', 'level' => 'bad', 'text' => 'Kein Futter mehr'];
     } elseif ($perDay > 0) {
         $days = $food / $perDay;
         if ($days < setting_int('food_min_days')) {
-            $alerts[] = ['level' => 'warn', 'text' => 'Futter reicht nur noch ca. ' . fmt_num($days, 1) . ' Tage'];
+            $alerts[] = ['key' => 'food', 'level' => 'warn', 'text' => 'Futter reicht nur noch ca. ' . fmt_num($days, 1) . ' Tage'];
         }
     } elseif ($pen['food_capacity'] !== null && (float) $pen['food_capacity'] > 0) {
         $pct = $food / (float) $pen['food_capacity'] * 100;
         if ($pct < setting_int('food_min_pct')) {
-            $alerts[] = ['level' => 'warn', 'text' => 'Futter bei ' . fmt_num($pct) . ' %'];
+            $alerts[] = ['key' => 'food', 'level' => 'warn', 'text' => 'Futter bei ' . fmt_num($pct) . ' %'];
         }
     }
 
@@ -398,9 +402,9 @@ function pen_alerts(array $pen): array
     if ((int) ($pen['water_auto'] ?? 0) !== 1 && isset($storage['WATER'])) {
         $pct = fill_pct($storage['WATER']);
         if ($storage['WATER']['level'] <= 0.5) {
-            $alerts[] = ['level' => 'bad', 'text' => 'Kein Wasser mehr'];
+            $alerts[] = ['key' => 'water', 'level' => 'bad', 'text' => 'Kein Wasser mehr'];
         } elseif ($pct !== null && $pct < setting_int('water_min_pct')) {
-            $alerts[] = ['level' => 'warn', 'text' => 'Wasser bei ' . fmt_num($pct) . ' %'];
+            $alerts[] = ['key' => 'water', 'level' => 'warn', 'text' => 'Wasser bei ' . fmt_num($pct) . ' %'];
         }
     }
 
@@ -408,7 +412,7 @@ function pen_alerts(array $pen): array
     if (isset($storage['STRAW'])) {
         $pct = fill_pct($storage['STRAW']);
         if ($pct !== null && $pct < setting_int('straw_min_pct')) {
-            $alerts[] = ['level' => $storage['STRAW']['level'] <= 0.5 ? 'bad' : 'warn', 'text' => 'Stroh bei ' . fmt_num($pct) . ' %'];
+            $alerts[] = ['key' => 'straw', 'level' => $storage['STRAW']['level'] <= 0.5 ? 'bad' : 'warn', 'text' => 'Stroh bei ' . fmt_num($pct) . ' %'];
         }
     }
 
@@ -419,7 +423,7 @@ function pen_alerts(array $pen): array
         }
         $pct = fill_pct($fill);
         if ($pct !== null && $pct >= setting_int('product_full_pct')) {
-            $alerts[] = ['level' => 'warn', 'text' => filltype_name($type) . ' fast voll (' . fmt_num($pct) . ' %)'];
+            $alerts[] = ['key' => 'product_' . $type, 'type' => $type, 'level' => 'warn', 'text' => filltype_name($type) . ' fast voll (' . fmt_num($pct) . ' %)'];
         }
     }
     return $alerts;

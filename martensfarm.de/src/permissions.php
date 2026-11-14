@@ -26,9 +26,10 @@ const PERMISSIONS = [
     'finance.manage'    => ['Finanzen', 'Buchungssätze verwalten', 'Kategorien und Zuordnung der Spiel-Statistik pflegen, fremde Buchungen stornieren'],
     'downloads.view'   => ['Downloads', 'Mods herunterladen', 'Mods des Gameservers über die App laden'],
     'downloads.manage' => ['Downloads', 'Downloads verwalten', 'Mods aus- und einblenden, Hinweise/Changelog pflegen, Download-Zahlen sehen'],
-    'tasks.create'   => ['Aufgaben', 'Aufgaben anlegen', 'Neue Aufgaben aufs Board stellen (kommt mit dem Aufgaben-Board)'],
-    'tasks.assign'   => ['Aufgaben', 'Aufgaben verteilen', 'Aufgaben anderen zuweisen (kommt mit dem Aufgaben-Board)'],
-    'tasks.work'     => ['Aufgaben', 'Aufgaben bearbeiten', 'Eigene Aufgaben übernehmen und abschließen (kommt mit dem Aufgaben-Board)'],
+    'tasks.create'   => ['Aufgaben', 'Aufgaben anlegen', 'Neue Aufgaben aufs Board stellen, eigene bearbeiten und verwerfen'],
+    'tasks.assign'   => ['Aufgaben', 'Aufgaben verteilen', 'Aufgaben zuweisen, alle bearbeiten und verschieben, Prüfung abhaken'],
+    'tasks.work'     => ['Aufgaben', 'Aufgaben bearbeiten', 'Offene Aufgaben übernehmen, eigene verschieben und kommentieren'],
+    'contracts.manage' => ['Aufgaben', 'Lohnaufträge verwalten', 'Lohnaufträge anlegen, ändern, abschließen und stornieren'],
 ];
 
 /** Alle Rollen, sortiert: role_key => Zeile */
