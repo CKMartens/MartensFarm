@@ -1,4 +1,5 @@
--- MartensFarm Hof-Management – Datenbankschema Phase 1
+-- MartensFarm Hof-Management – Datenbankschema (Stand 0.2)
+-- Bestehende Installation aktualisieren: bin/update-db.php (führt update-*.sql aus)
 -- MariaDB 10.6+ / MySQL 8+, Zeichensatz utf8mb4
 
 SET NAMES utf8mb4;
@@ -6,6 +7,7 @@ SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS farms (
     farm_id      TINYINT UNSIGNED NOT NULL PRIMARY KEY,   -- farmId aus dem Spiel (1–8)
     name         VARCHAR(100) NOT NULL,
+    name_locked  TINYINT(1) NOT NULL DEFAULT 0,               -- vom Admin benannt, Import überschreibt nicht
     color        TINYINT UNSIGNED NULL,
     money        BIGINT NULL,
     loan         BIGINT NULL,
@@ -80,14 +82,17 @@ CREATE TABLE IF NOT EXISTS snapshot_players (
 CREATE TABLE IF NOT EXISTS farm_money_history (
     id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     farm_id     TINYINT UNSIGNED NOT NULL,
+    savegame_id INT UNSIGNED NULL,
     fetched_at  DATETIME NOT NULL,
     money       BIGINT NOT NULL,
-    KEY idx_farm_time (farm_id, fetched_at)
+    KEY idx_farm_time (farm_id, fetched_at),
+    KEY idx_savegame_farm (savegame_id, farm_id, fetched_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Aktueller Fuhrpark (wird bei jedem Import abgeglichen)
 CREATE TABLE IF NOT EXISTS vehicles (
     unique_id       VARCHAR(64) NOT NULL PRIMARY KEY,
+    savegame_id     INT UNSIGNED NULL,
     farm_id         TINYINT UNSIGNED NOT NULL,
     name            VARCHAR(150) NOT NULL,
     category        VARCHAR(50) NULL,
@@ -106,7 +111,8 @@ CREATE TABLE IF NOT EXISTS vehicles (
     last_seen_at    DATETIME NOT NULL,
     removed_at      DATETIME NULL,
     KEY idx_farm (farm_id),
-    KEY idx_removed (removed_at)
+    KEY idx_removed (removed_at),
+    KEY idx_savegame (savegame_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Preisverlauf je Ware und Spielperiode (aus economy.xml)
@@ -121,4 +127,67 @@ CREATE TABLE IF NOT EXISTS prices (
 CREATE TABLE IF NOT EXISTS settings (
     name   VARCHAR(50) NOT NULL PRIMARY KEY,
     value  TEXT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Spielstände (Map + Savegame-Name). Daten der anderen Tabellen hängen an savegame_id.
+CREATE TABLE IF NOT EXISTS savegames (
+    id             INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    map_id         VARCHAR(150) NOT NULL,
+    map_title      VARCHAR(150) NULL,
+    savegame_name  VARCHAR(150) NOT NULL,
+    first_seen_at  DATETIME NOT NULL,
+    last_seen_at   DATETIME NOT NULL,
+    UNIQUE KEY uq_savegame (map_id, savegame_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Kontostände der Höfe beim Wechsel auf ein anderes Savegame
+CREATE TABLE IF NOT EXISTS farms_archive (
+    savegame_id  INT UNSIGNED NOT NULL,
+    farm_id      TINYINT UNSIGNED NOT NULL,
+    name         VARCHAR(100) NOT NULL,
+    money        BIGINT NULL,
+    loan         BIGINT NULL,
+    archived_at  DATETIME NOT NULL,
+    PRIMARY KEY (savegame_id, farm_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ställe aus der Export-Mod (Stand: letzter Save)
+CREATE TABLE IF NOT EXISTS husbandries (
+    id             INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    savegame_id    INT UNSIGNED NOT NULL,
+    pen_key        VARCHAR(80) NOT NULL,
+    farm_id        TINYINT UNSIGNED NOT NULL,
+    name           VARCHAR(150) NOT NULL,
+    animal_type    VARCHAR(50) NULL,
+    animals        INT UNSIGNED NOT NULL DEFAULT 0,
+    max_animals    INT UNSIGNED NULL,
+    productivity   DECIMAL(6,4) NULL,
+    health         DECIMAL(5,2) NULL,
+    food_total     DECIMAL(14,2) NULL,
+    food_capacity  DECIMAL(14,2) NULL,
+    food_per_day   DECIMAL(12,2) NULL,
+    water_auto     TINYINT(1) NULL,
+    water_per_day  DECIMAL(12,2) NULL,
+    straw_per_day  DECIMAL(12,2) NULL,
+    foods          JSON NULL,
+    storage        JSON NULL,
+    updated_at     DATETIME NOT NULL,
+    removed_at     DATETIME NULL,
+    UNIQUE KEY uq_pen (savegame_id, pen_key),
+    KEY idx_farm (savegame_id, farm_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Silos, Lager und Produktionen aus der Export-Mod
+CREATE TABLE IF NOT EXISTS storages (
+    id           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    savegame_id  INT UNSIGNED NOT NULL,
+    storage_key  VARCHAR(80) NOT NULL,
+    farm_id      TINYINT UNSIGNED NOT NULL,
+    name         VARCHAR(150) NOT NULL,
+    kind         VARCHAR(20) NOT NULL,
+    fills        JSON NULL,
+    updated_at   DATETIME NOT NULL,
+    removed_at   DATETIME NULL,
+    UNIQUE KEY uq_storage (savegame_id, storage_key),
+    KEY idx_farm (savegame_id, farm_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

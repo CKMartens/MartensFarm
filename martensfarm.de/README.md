@@ -132,9 +132,30 @@ Der Nitrado-Server gibt folgende Feeds frei:
 | `vehicles` | Fuhrpark mit Schaden, Stunden, Füllständen |
 | `economy` | Preise je Monat |
 
-**Nicht** freigegeben sind `farms` und `environment` (Antwort 204). Deshalb gilt:
-- Der Kontostand kommt aus `careerSavegame` (Hof 1). Getrennte Kontostände für mehrere Höfe brauchen später einen anderen Weg.
-- Den Spielmonat stellt ein Hofleiter einmal ein. Die App zählt dann jede Mitternacht im Spiel einen Tag weiter.
+**Nicht** freigegeben sind `farms` und `environment` (Antwort 204). FTP gibt es bei Nitrado nur für den Mod-Ordner und nur bei gestopptem Server.
+Deshalb gibt es die eigene Export-Mod `FS25_MartensFarmExport` (Quelle und Anleitung in `mod/`). Sie schreibt beim Speichern einen Block
+`<martensFarm>` in `careerSavegame.xml`, und der Import liest ihn über den freigegebenen Feed mit:
+- Kontostand und Kredit **aller** Höfe
+- Ställe mit Tieren, Produktivität, Futter, Wasser, Stroh und Produkten → Seite **Tiere** mit Hinweisen
+- Silos, Lager und Produktionen → Seite **Lager**
+- Spielkalender (Monat und Tag), der manuelle Monat auf der Preisseite ist dann nur noch Notbehelf
+
+Ohne die Mod läuft alles wie vorher: Kontostand nur von Hof 1, Monat manuell.
+
+Die Savegame-Feeds ändern sich nur, wenn der Server speichert (Autosave bzw. manuell). Das Dashboard weist darauf hin.
+
+### Savegames und Map-Wechsel
+
+Die App erkennt das Savegame an Map und Savegame-Name. Bei einem Wechsel legt sie automatisch ein neues an, archiviert die Kontostände
+des alten und leert die Preise. Fahrzeuge, Ställe, Lager und der Geldverlauf hängen am Savegame und tauchen wieder auf, wenn ihr zurückwechselt.
+Welche Höfe zählen, wie sie heißen und ab wann es Hinweise gibt, stellt der Admin unter **Einstellungen** ein.
+
+### Update auf 0.2
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Das Skript legt die neuen Tabellen und Spalten an und darf mehrfach laufen.
+3. Die Export-Mod auf den Server laden (siehe `mod/README.md`) und einmal speichern.
+4. `keyhelp-php85 bin/check-mod-export.php` zeigt, was ankommt. Danach unter **Einstellungen** die Höfe prüfen.
 
 Die Savegame-Feeds ändern sich nur, wenn der Server speichert (Autosave bzw. manuell).
 

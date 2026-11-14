@@ -1,5 +1,5 @@
 <?php
-/** @var array $user @var ?array $snap @var ?array $lastOk @var array $players @var array $farms @var array $moneyHistory @var array $fleet @var array $repairs @var array $tips */
+/** @var array $user @var ?array $snap @var ?array $lastOk @var array $players @var array $farms @var array $moneyHistory @var array $fleet @var array $repairs @var int $threshold @var array $pens @var int $animalCount @var array $penAlerts @var ?array $mfInfo @var array $tips */
 $online = $snap && (int) $snap['ok'] === 1 && strtotime($snap['fetched_at']) > time() - 900;
 $myFarm = null;
 foreach ($farms as $f) {
@@ -33,6 +33,12 @@ if (count($moneyHistory) >= 2) {
         </form>
     <?php endif; ?>
 </header>
+
+<div class="alert alert-info small">
+    Kontostände, Fahrzeuge, Tiere und Lager kommen aus dem Spielstand und werden nur aktualisiert, wenn der Server speichert.
+    Sie können deshalb bis zu 60 Minuten hinterherhinken.<?php if ($mfInfo): ?> Letzter Save: <strong><?= e(fmt_datetime($mfInfo['written_at'])) ?></strong> (<?= e(fmt_ago($mfInfo['written_at'])) ?>).<?php endif; ?>
+    Live sind nur Server-Status, Spieler und Uhrzeit.
+</div>
 
 <section class="tiles">
     <div class="tile">
@@ -81,13 +87,32 @@ if (count($moneyHistory) >= 2) {
         <?php if ($repairs): ?>
             <ul class="plain">
                 <?php foreach ($repairs as $r): $d = (float) $r['damage']; ?>
-                    <li><span class="badge <?= $d >= 0.3 ? 'bad' : 'warn' ?>"><?= e(fmt_num($d * 100)) ?> %</span> <?= e($r['name']) ?></li>
+                    <li><span class="badge <?= $d >= min(1, $threshold / 100 + 0.1) ? 'bad' : 'warn' ?>"><?= e(fmt_num($d * 100)) ?> %</span> <?= e($r['name']) ?></li>
                 <?php endforeach; ?>
             </ul>
         <?php else: ?>
-            <p class="muted">Alles im grünen Bereich – kein Fahrzeug über 15 % Schaden.</p>
+            <p class="muted">Alles im grünen Bereich – kein Fahrzeug über <?= (int) $threshold ?> % Schaden.</p>
         <?php endif; ?>
         <p><a href="<?= e(url('fuhrpark')) ?>">Zum Fuhrpark →</a></p>
+    </section>
+
+    <section class="card">
+        <h2>Tiere</h2>
+        <?php if (!$pens): ?>
+            <p class="muted">Keine Stalldaten. Dafür muss die Export-Mod auf dem Server laufen und einmal gespeichert worden sein.</p>
+        <?php elseif ($penAlerts): ?>
+            <ul class="plain">
+                <?php foreach ($penAlerts as $p): ?>
+                    <li><strong><?= e($p['name']) ?></strong> <span class="muted small">(<?= e(animal_name($p['animal_type'])) ?>)</span><br>
+                        <?php foreach ($p['alerts'] as $a): ?><span class="badge <?= e($a['level']) ?>"><?= e($a['text']) ?></span> <?php endforeach; ?>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php else: ?>
+            <p class="muted">Alles versorgt: <?= (int) $animalCount ?> Tiere in <?= count(array_filter($pens, fn($p) => $p['animals'] > 0)) ?> Ställen.</p>
+        <?php endif; ?>
+        <?php if ($mfInfo): ?><p class="muted small">Stand: letzter Save, <?= e(fmt_datetime($mfInfo['written_at'])) ?></p><?php endif; ?>
+        <p><a href="<?= e(url('tiere')) ?>">Zu den Tieren →</a></p>
     </section>
 
     <section class="card">

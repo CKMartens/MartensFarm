@@ -86,7 +86,7 @@ Alle Ordner außer `public/` haben zusätzlich eine `.htaccess` mit `Require all
   - Rate-Limit: 5 Mails pro Adresse und 20 pro IP und Stunde.
   - Session-Cookie mit `Secure`, `HttpOnly` und `SameSite=Lax`, Abmeldung nach 72 Stunden.
 - **Rollen:** admin > hofleiter > mitarbeiter > gast. Nutzer legt nur der Admin an (`/admin/nutzer`), dort lassen sich auch Höfe umbenennen.
-- **Dashboard:** Serverstatus, Spieler online, Uhrzeit im Spiel, Kontostand mit 30-Tage-Verlauf, Werkstatt fällig (ab 15 % Schaden), Verkaufstipps.
+- **Dashboard:** Serverstatus, Spieler online, Uhrzeit im Spiel, Kontostand mit 30-Tage-Verlauf, Werkstatt fällig (ab 20 % Schaden, einstellbar), Verkaufstipps.
 - **Fuhrpark:** gruppiert nach Kategorie, mit Schaden, Stunden, Alter, Füllständen und zuletzt verkauften Fahrzeugen.
 - **Preise:** jetzt, tiefster und höchster Preis, bester und schlechtester Monat. Den Spielmonat stellt ein Hofleiter ein, danach zählt die App selbst weiter (jede Mitternacht im Spiel ein Tag, nach 4 Tagen der nächste Monat).
 - **Importer:**
@@ -121,7 +121,7 @@ Erster echter Import: Server erreichbar, 44 Fahrzeuge, 3.084 Preiswerte, Kontost
 2. **Phase 2 – Aufgaben-Board (als Nächstes):**
    - Kanban mit den Spalten Backlog, To Do, In Arbeit, Prüfung, Erledigt.
    - Aufgaben Mitgliedern zuweisen, mit Feld oder Fahrzeug verknüpfen, Priorität setzen.
-   - Automatisch Werkstatt-Aufgaben anlegen, sobald ein Fahrzeug über 15 % Schaden hat.
+   - Automatisch Werkstatt-Aufgaben anlegen, sobald ein Fahrzeug über der Wartungsschwelle (Default 20 %) liegt.
    - Drag & Drop mit externem JS, CSP-konform.
 3. **Phase 2 – Felder:**
    - Eigene Felder aus `stats.xml` (`Fields` und `Farmlands`).

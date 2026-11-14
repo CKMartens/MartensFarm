@@ -72,6 +72,16 @@ try {
             require APP_ROOT . '/src/pages/fleet.php';
             break;
 
+        case 'GET tiere':
+            $user = require_login();
+            require APP_ROOT . '/src/pages/animals.php';
+            break;
+
+        case 'GET lager':
+            $user = require_login();
+            require APP_ROOT . '/src/pages/storage.php';
+            break;
+
         case 'GET preise':
             $user = require_login();
             require APP_ROOT . '/src/pages/prices.php';
@@ -92,6 +102,12 @@ try {
         case 'POST admin/nutzer':
             $user = require_role('admin');
             require APP_ROOT . '/src/pages/users.php';
+            break;
+
+        case 'GET admin/einstellungen':
+        case 'POST admin/einstellungen':
+            $user = require_role('admin');
+            require APP_ROOT . '/src/pages/settings.php';
             break;
 
         case 'POST admin/import':

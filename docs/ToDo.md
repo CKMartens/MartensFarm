@@ -5,7 +5,7 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 **Rahmen für alles:**
 - Server steht im Hetzner-Netz: keine offenen Formulare, Rate-Limits, schonende Abrufe
 - Geheimnisse (DB-Passwort, Feed-Code) bleiben in `config/config.php`, nie in der Oberfläche oder im Repo
-- Datenquellen sind aktuell nur `stats.xml` (live) sowie `careerSavegame`, `vehicles` und `economy` (nur nach dem Speichern). Kontostand gibt es nur für Hof 1.
+- Datenquellen: `stats.xml` (live) sowie `careerSavegame`, `vehicles` und `economy` (nur nach dem Speichern). Über die eigene Export-Mod kommen in `careerSavegame` auch alle Höfe, Ställe, Lager und der Kalender mit.
 
 ---
 
@@ -17,7 +17,7 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | mittel |
 | 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben | mittel |
 | 4 | Fahrzeugverwaltung erweitern | klein |
-| 5 | Datenweg erweitern (FTP oder Mod) für Tiere und Höfe 2–8 | klären |
+| 5 | Datenweg erweitern: Export-Mod für Tiere, Lager und Höfe 2–8 | erledigt (0.2) |
 | 6 | Downloadverwaltung | mittel |
 
 ---
@@ -43,7 +43,7 @@ Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert
   - **Einnahmen:** Lohnaufträge, Verkauf Fahrzeuge/Maschinen, Verkauf Ernteerträge, Verkauf Felder, Sonstiges
   - **Ausgaben:** Fahrzeugwartung und Treibstoff, Landkauf, Pacht, Lohn, Verbrauchsgüter (Dünger, Saatgut usw.), Sonstiges
 - [ ] **Differenzerkennung** über `farm_money_history`: Die Änderung des Kontostands wird mit der Summe der Buchungen im selben Zeitraum verglichen, der Rest erscheint als „ungeklärt“.
-  - Achtung: Der Kontostand ändert sich nur, wenn der Server speichert, und gilt **nur für Hof 1**.
+  - Achtung: Der Kontostand ändert sich nur, wenn der Server speichert. Mit der Export-Mod gibt es ihn für alle Höfe.
   - Laufende Kosten (Helferlohn, Treibstoff, Wartung) sind nie einzeln sichtbar, dafür gibt es eine Sammelbuchung „Laufende Kosten“.
 - [ ] **Buchungsvorschläge** automatisch:
   - Fahrzeug verschwindet (`removed_at`) → Verkauf
@@ -57,8 +57,8 @@ Aufgaben manuell oder automatisch anlegen und an Mitspieler delegieren.
 
 - [ ] Kanban mit den Spalten Backlog, To Do, In Arbeit, Prüfung, Erledigt
 - [ ] Zuweisung an Mitglieder, Priorität, Fälligkeit (Spieltag), Verknüpfung mit Fahrzeug oder Feld
-- [ ] **Fahrzeugwartung automatisch**: Die Schwelle ist in `settings` einstellbar, **Default 20 %**. Dashboard und Doku sind von 15 % darauf umzustellen. Es gibt keine doppelten Aufgaben pro Fahrzeug, und die Aufgabe schließt sich, sobald repariert wurde.
-- [ ] **Tierpflege**: Vorerst nur manuell bzw. wiederkehrend (z. B. alle 2 Spieltage), weil die freigegebenen Feeds keine Tierdaten liefern. Automatisch geht es erst mit Paket 5.
+- [ ] **Fahrzeugwartung automatisch**: Die Schwelle ist unter Einstellungen einstellbar, **Default 20 %** (Dashboard und Fuhrpark nutzen sie schon). Es gibt keine doppelten Aufgaben pro Fahrzeug, und die Aufgabe schließt sich, sobald repariert wurde.
+- [ ] **Tierpflege**: Die Hinweise gibt es schon (Seite Tiere und Dashboard: Futter, Wasser, Stroh, Produkte fast voll; Schwellen unter Einstellungen). Mit dem Board werden daraus automatische Aufgaben.
 - [ ] Drag & Drop mit externem JS, CSP-konform
 
 ### Lohnaufträge (eigenes Objekt)
@@ -75,15 +75,16 @@ Die Anzeige gibt es schon (Fuhrpark mit Schaden, Stunden, Füllständen, Verkauf
 
 - [ ] Wünsche konkret sammeln, z. B. Karte mit Positionen, Filter, Kosten pro Fahrzeug (aus Buchungen)
 
-## 5. Datenweg erweitern
+## 5. Datenweg erweitern ✔
 
-Für Tiere, Lager und getrennte Kontostände der Höfe 1–8 reichen die freigegebenen Feeds nicht.
+FTP bei Nitrado geht nur für den Mod-Ordner und nur bei gestopptem Server, FarmHub scheidet damit aus (und hat eine Non-Commercial-Lizenz).
+Gelöst mit der eigenen Mod `FS25_MartensFarmExport` (Ordner `mod/`, GPL-3.0):
 
-- [ ] Klären, ob Nitrado **FTP-Lesezugriff auf den Savegame-Ordner** gibt. Dann könnte der Cron `farms.xml` u. a. direkt lesen, ohne dass ein Spieler einen Mod braucht. Das ist der bevorzugte Weg.
-- [ ] Alternative: Mod, der die Daten in `modSettings` exportiert. Kandidat ist [FarmHub](https://github.com/WizardlyPayload/FarmHub), das eine `data.json` schreibt. Wird separat geprüft.
-  - Lizenz: FarmHub hat eine eigene Non-Commercial-Lizenz, also keinen Code ins GPL-Repo übernehmen, nur die exportierten Daten lesen.
-  - Alternativ ein eigener schlanker Export-Mod.
-- [ ] FTP-Abruf schonend: gleicher Mindestabstand wie beim Feed, Zugangsdaten nur in `config.php`.
+- [x] Mod schreibt beim Speichern `<martensFarm>` in `careerSavegame.xml`, abrufbar über den freigegebenen Feed
+- [x] Map-unabhängig und roh: alle Höfe, Ställe, Lager mit Besitzer-ID, dazu der Spielkalender
+- [x] App: Import, Seiten Tiere und Lager, Tierpflege-Hinweise, Savegame-/Map-Wechsel mit Archiv
+- [x] Administration → Einstellungen: welche Höfe zählen, Namen, Schwellen
+- [ ] Im echten Spiel prüfen, welche Werte LS25 liefert (Wasser, Stroh, Futter pro Tag, Produktivität). Was fehlt, zeigt `bin/check-mod-export.php` bzw. die Einstellungsseite.
 
 ## 6. Downloadverwaltung
 
@@ -97,7 +98,8 @@ Mods, die nicht im offiziellen GIANTS-ModHub sind, für die Mitspieler zum Downl
 
 ## Administration
 
-- [ ] Einstellungsseite für Nicht-Geheimes aus der `settings`-Tabelle: Karte, Spielkalender (Tage pro Monat), Wartungsschwelle, Importer-Intervall
+- [x] Einstellungsseite (`/admin/einstellungen`): Höfe, Namen, Wartungsschwelle, Tier-Schwellen, Savegames
+- [ ] Weitere Einstellungen bei Bedarf: Importer-Intervall
 - [ ] Buchungskategorien pflegen (anlegen, umbenennen, deaktivieren)
 - [ ] Rechte je Rolle anzeigen bzw. anpassen
 - Geheimnisse (Feed-Code, DB, FTP) bleiben in `config/config.php`

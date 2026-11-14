@@ -2,11 +2,13 @@
 declare(strict_types=1);
 /** @var array $user */
 
-$farms = q('SELECT farm_id, name FROM farms ORDER BY farm_id')->fetchAll(PDO::FETCH_KEY_PAIR);
+$farms = active_farms();
+$sgId = current_savegame_id();
 $farmId = isset($_GET['hof']) ? (int) $_GET['hof'] : (int) ($user['farm_id'] ?: array_key_first($farms) ?: 1);
 
-$vehicles = q('SELECT * FROM vehicles WHERE removed_at IS NULL AND farm_id = ? ORDER BY category, name', [$farmId])->fetchAll();
-$removed  = q('SELECT name, price, removed_at FROM vehicles WHERE removed_at IS NOT NULL AND farm_id = ? ORDER BY removed_at DESC LIMIT 10', [$farmId])->fetchAll();
+$vehicles = q('SELECT * FROM vehicles WHERE removed_at IS NULL AND farm_id = ? AND savegame_id <=> ? ORDER BY category, name', [$farmId, $sgId])->fetchAll();
+$removed  = q('SELECT name, price, removed_at FROM vehicles WHERE removed_at IS NOT NULL AND farm_id = ? AND savegame_id <=> ? ORDER BY removed_at DESC LIMIT 10', [$farmId, $sgId])->fetchAll();
+$threshold = setting_int('maintenance_threshold_pct') / 100;
 
 // Kategorien aus dem Spiel grob zu Gruppen zusammenfassen
 const FLEET_GROUPS = [
@@ -32,4 +34,4 @@ uksort($grouped, fn($a, $b) => array_search($a, $order, true) <=> array_search($
 
 $total = array_sum(array_column($vehicles, 'price'));
 
-render('fleet', compact('user', 'farms', 'farmId', 'grouped', 'removed', 'total', 'vehicles') + ['title' => 'Fuhrpark', 'nav' => 'fuhrpark']);
+render('fleet', compact('user', 'farms', 'farmId', 'grouped', 'removed', 'total', 'vehicles', 'threshold') + ['title' => 'Fuhrpark', 'nav' => 'fuhrpark']);

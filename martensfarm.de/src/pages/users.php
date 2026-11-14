@@ -2,7 +2,7 @@
 declare(strict_types=1);
 /** @var array $user */
 
-$farms = q('SELECT farm_id, name FROM farms ORDER BY farm_id')->fetchAll(PDO::FETCH_KEY_PAIR);
+$farms = active_farms();
 $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $fid = (int) ($_POST['farm_id'] ?? 0);
                 $fname = trim((string) ($_POST['farm_label'] ?? ''));
                 if (isset($farms[$fid]) && $fname !== '' && mb_strlen($fname) <= 100) {
-                    q('UPDATE farms SET name = ? WHERE farm_id = ?', [$fname, $fid]);
+                    q('UPDATE farms SET name = ?, name_locked = 1 WHERE farm_id = ?', [$fname, $fid]);
                     flash('success', 'Hofname gespeichert.');
                 }
                 redirect('admin/nutzer');
