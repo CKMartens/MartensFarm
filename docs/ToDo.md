@@ -54,6 +54,7 @@ Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert
   - Farmland-Besitzer wechselt in `stats.xml` → Landkauf/-verkauf
   - [x] Lohnauftrag erledigt → Einnahme (und Ausgabe beim Auftraggeber, wenn es ein Hof im Spiel ist)
 - [ ] Im echten Spiel prüfen: Kommen die Arten so an, wie erwartet (`bin/check-mod-export.php`, Abschnitt Finanzen)? Passt die Summe zur Kontostandsänderung?
+- [ ] **Buchungen löschen** (vorgemerkt): zusätzlich zum Stornieren echtes Löschen, z. B. für Fehleingaben. Nur mit eigenem Recht (z. B. `finance.delete`), mit Rückfrage; offen: ob ein Eintrag im Verlauf bleibt, wer wann was gelöscht hat
 
 ## 3. Aufgaben ✔
 
@@ -67,6 +68,8 @@ Seite `/aufgaben` (0.7). Aufgaben manuell oder automatisch anlegen und an Mitspi
 - [x] Drag & Drop mit externem JS (`assets/tasks.js`), CSP-konform, ohne JS über Knöpfe
 - [x] Einstellungen: Automatik an/aus, ob Spieler selbst abhaken dürfen oder erst „Prüfung“
 - [ ] Im echten Spiel prüfen: Kommen die Auto-Aufgaben zum richtigen Zeitpunkt und schließen sie sich nach dem Save?
+- [ ] **Aufgaben löschen** (vorgemerkt): manuell löschen können (eigenes Recht, z. B. `tasks.delete`, mit Rückfrage), Kommentare und Verlauf gehen mit
+- [ ] **Erledigte automatisch aufräumen** (vorgemerkt): Aufgaben in „Erledigt“ werden im nächsten Ingame-Monat automatisch gelöscht (Spielkalender aus dem Export). Vorher prüfen: Lohnaufträge und Buchungsvorschläge dürfen dadurch keinen Verweis verlieren
 
 ### Lohnaufträge ✔
 
