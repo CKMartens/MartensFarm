@@ -58,6 +58,7 @@ Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert
   - Eigener Buchungssatz **Korrektur (Abgleich)**, beim normalen Buchen nicht auswählbar
   - Der Monat gilt danach als **abgeschlossen**: keine Buchungen, Stornos oder Löschungen mehr für seine Tage. Recht *Monat abschließen* (`finance.close`), wieder öffnen mit *Buchungssätze verwalten* (Korrektur wird storniert)
 - [x] **Buchungen löschen** (0.8): zusätzlich zum Stornieren echtes Löschen, eigenes Recht `finance.delete` (nach dem Update nur Admin), mit Rückfrage und optionalem Grund. Im **Löschprotokoll** bleibt stehen, wer wann was gelöscht hat
+- [x] **Stornierte Buchungen löschen** (0.12): einzeln oder alle auf einmal im Kassenbuch; **Löschprotokoll unter Verwaltung** über alle Höfe (wer, wann, was, Grund)
 
 ## 3. Aufgaben ✔
 

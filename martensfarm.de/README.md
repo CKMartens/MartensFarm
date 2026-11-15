@@ -265,6 +265,10 @@ So funktioniert's:
 - **Löschen** (Recht *Buchungen löschen*): zusätzlich zum Stornieren, z. B. für Fehleingaben. Mit Rückfrage und optionalem Grund.
   Die Buchung verschwindet aus Kassenbuch und Abgleich, im **Löschprotokoll** unten auf der Finanzseite bleibt stehen, was es war,
   wer sie angelegt und wer sie gelöscht hat. Ein verknüpfter Vorschlag wird wieder geöffnet.
+- **Stornierte aufräumen** (ab 0.12): Im Kassenbuch löscht „Stornierte löschen“ alle stornierten Buchungen des Hofs auf einmal
+  (mit Rückfrage, nicht in abgeschlossenen Monaten). Einzeln geht es weiterhin über „Löschen“ in der Zeile.
+- **Verwaltung → Löschprotokoll** (ab 0.12): alle gelöschten Buchungen über alle Höfe, filterbar nach Hof und Savegame, mit wer/wann/was
+  und Grund. Sichtbar mit *Buchungen löschen* oder *Buchungssätze verwalten*, jeweils nur für Höfe, deren Finanzen man sehen darf.
 
 ### Update auf 0.9 (Aufgaben löschen und aufräumen)
 

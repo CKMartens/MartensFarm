@@ -1,7 +1,7 @@
 <?php
 /** @var array $user @var array $farms @var int $farmId @var ?array $farm @var array $savegames @var int $sgId @var ?int $currentSg @var bool $readOnly
  *  @var array $rec @var array $gameOpen @var array $suggestions @var array $bookings @var array $totals @var array $cats @var ?int $gameDay @var bool $hasGameData
- *  @var array $months @var array $deletions @var ?array $confirmDelete */
+ *  @var array $months @var array $deletions @var ?array $confirmDelete @var int $cancelledDeletable @var bool $confirmDeleteCancelled */
 $sign = fn(int $v): string => ($v > 0 ? '+' : '') . fmt_money($v);
 $cls = fn(int $v): string => $v > 0 ? 'ok' : ($v < 0 ? 'bad' : 'muted');
 $open = (int) $rec['open'];
@@ -49,6 +49,25 @@ $monthStatus = [
     <div class="alert alert-info">Archiv: Dieses Savegame läuft nicht mehr, hier kann nur noch geschaut werden.</div>
 <?php elseif ($gameDay === null): ?>
     <div class="alert alert-warning">Der Spieltag ist noch unbekannt. Er kommt mit dem nächsten Save, dafür muss die Export-Mod ab Version 0.3 laufen.</div>
+<?php endif; ?>
+
+<?php if ($confirmDeleteCancelled): ?>
+    <section class="card" id="loeschen">
+        <h2><?= (int) $cancelledDeletable ?> stornierte Buchung(en) endgültig löschen?</h2>
+        <p class="muted small">Sie verschwinden aus dem Kassenbuch. Im Löschprotokoll (unten und unter Verwaltung) bleibt stehen, was es war und wer gelöscht hat.
+            Stornierte in abgeschlossenen Monaten bleiben.</p>
+        <form method="post" action="<?= e(url('finanzen' . $q)) ?>" class="stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="delete_cancelled">
+            <label>Grund (optional)
+                <input type="text" name="reason" maxlength="255" placeholder="z. B. Aufräumen">
+            </label>
+            <div class="btn-row">
+                <button class="btn btn-primary" type="submit">Endgültig löschen</button>
+                <a class="btn btn-ghost" href="<?= e(url('finanzen' . $q)) ?>">Abbrechen</a>
+            </div>
+        </form>
+    </section>
 <?php endif; ?>
 
 <?php if ($confirmDelete): $cd = $confirmDelete; ?>
@@ -260,7 +279,12 @@ $monthStatus = [
 </section>
 
 <section class="card">
-    <h2>Kassenbuch</h2>
+    <div class="page-head">
+        <h2>Kassenbuch</h2>
+        <?php if ($cancelledDeletable > 0 && !$confirmDeleteCancelled): ?>
+            <a class="btn btn-ghost btn-sm" href="<?= e(url('finanzen' . $q . '&stornierte_loeschen=1#loeschen')) ?>">Stornierte löschen (<?= (int) $cancelledDeletable ?>)</a>
+        <?php endif; ?>
+    </div>
     <?php if ($bookings): ?>
         <div class="table-wrap">
         <table class="table compact">
@@ -298,7 +322,10 @@ $monthStatus = [
 
 <?php if ($deletions): ?>
     <section class="card">
-        <h2>Löschprotokoll</h2>
+        <div class="page-head">
+            <h2>Löschprotokoll</h2>
+            <?php if (can_any($user, ['finance.delete', 'finance.manage'])): ?><a class="small" href="<?= e(url('admin/loeschprotokoll?hof=' . $farmId)) ?>">alle Höfe unter Verwaltung →</a><?php endif; ?>
+        </div>
         <div class="table-wrap">
         <table class="table compact">
             <thead><tr><th>Tag</th><th>Buchungssatz</th><th>Text</th><th class="num">Betrag</th><th>Angelegt</th><th>Gelöscht</th></tr></thead>
