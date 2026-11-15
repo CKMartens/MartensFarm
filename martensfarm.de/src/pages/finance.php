@@ -27,7 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $action = (string) ($_POST['action'] ?? '');
     // Abschließen, Öffnen und Löschen prüfen ihre eigenen Rechte, der Rest braucht „Buchen“
-    $ownRights = in_array($action, ['close_month', 'reopen_month', 'delete'], true);
+    $ownRights = in_array($action, ['close_month', 'reopen_month', 'delete', 'delete_cancelled'], true);
     if ($sgId === 0 || $sgId !== (int) $currentSg || (!$ownRights && $readOnly)) {
         flash('error', 'Hier darfst du nicht buchen.');
         redirect($back);
@@ -40,6 +40,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($action === 'delete') {
         $ok = finance_delete($user, (int) ($_POST['id'] ?? 0), trim((string) ($_POST['reason'] ?? '')));
         flash($ok ? 'success' : 'error', $ok ? 'Buchung gelöscht. Sie steht noch im Löschprotokoll.' : 'Diese Buchung darfst du nicht löschen.');
+    } elseif ($action === 'delete_cancelled') {
+        $n = finance_delete_cancelled($user, $sgId, $farmId, trim((string) ($_POST['reason'] ?? '')));
+        flash($n ? 'success' : 'warning', $n ? "{$n} stornierte Buchung(en) gelöscht. Sie stehen im Löschprotokoll." : 'Keine stornierten Buchungen zum Löschen.');
     } elseif ($action === 'close_month') {
         [$ok, $msg] = finance_close_month($user, $sgId, $farmId, (int) ($_POST['month'] ?? -1));
         flash($ok ? 'success' : 'error', $msg);
@@ -92,6 +95,9 @@ $hasGameData = $sgId && (bool) q('SELECT 1 FROM game_finances WHERE savegame_id 
 $months = $sgId ? array_slice(finance_months($sgId, $farmId, $rec), 0, 12) : [];
 $deletions = $sgId ? finance_deletions($sgId, $farmId) : [];
 
+$cancelledDeletable = $sgId ? count(finance_cancelled_deletable($user, $sgId, $farmId)) : 0;
+$confirmDeleteCancelled = isset($_GET['stornierte_loeschen']) && $cancelledDeletable > 0;
+
 // Rückfrage vor dem Löschen (ohne JavaScript): ?loeschen=<id> zeigt die Buchung mit „Endgültig löschen“
 $confirmDelete = null;
 $delId = (int) ($_GET['loeschen'] ?? 0);
@@ -103,4 +109,4 @@ if ($delId > 0) {
 }
 
 render('finance', compact('user', 'farms', 'farmId', 'farm', 'savegames', 'sgId', 'currentSg', 'readOnly', 'rec', 'gameOpen',
-    'suggestions', 'bookings', 'totals', 'cats', 'gameDay', 'hasGameData', 'months', 'deletions', 'confirmDelete') + ['title' => 'Finanzen', 'nav' => 'finanzen']);
+    'suggestions', 'bookings', 'totals', 'cats', 'gameDay', 'hasGameData', 'months', 'deletions', 'confirmDelete', 'cancelledDeletable', 'confirmDeleteCancelled') + ['title' => 'Finanzen', 'nav' => 'finanzen']);

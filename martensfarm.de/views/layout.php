@@ -49,7 +49,7 @@ $items = [
                 <?php if (can($u, 'downloads.view')): ?>
                     <a class="nav-item<?= $nav === 'downloads' ? ' active' : '' ?>" href="<?= e(url('downloads')) ?>"><span class="nav-icon">⬇</span>Downloads</a>
                 <?php endif; ?>
-                <?php if (can_any($u, ['admin.users', 'admin.roles', 'admin.settings', 'finance.manage'])): ?>
+                <?php if (can_any($u, ['admin.users', 'admin.roles', 'admin.settings', 'finance.manage', 'finance.delete'])): ?>
                     <div class="nav-title">Verwaltung</div>
                     <?php if (can($u, 'admin.users')): ?>
                         <a class="nav-item<?= $nav === 'nutzer' ? ' active' : '' ?>" href="<?= e(url('admin/nutzer')) ?>"><span class="nav-icon">👥</span>Nutzer &amp; Höfe</a>
@@ -59,6 +59,9 @@ $items = [
                     <?php endif; ?>
                     <?php if (can($u, 'finance.manage')): ?>
                         <a class="nav-item<?= $nav === 'buchungssaetze' ? ' active' : '' ?>" href="<?= e(url('admin/buchungssaetze')) ?>"><span class="nav-icon">🗂</span>Buchungssätze</a>
+                    <?php endif; ?>
+                    <?php if (can_any($u, ['finance.delete', 'finance.manage'])): ?>
+                        <a class="nav-item<?= $nav === 'loeschprotokoll' ? ' active' : '' ?>" href="<?= e(url('admin/loeschprotokoll')) ?>"><span class="nav-icon">🗑</span>Löschprotokoll</a>
                     <?php endif; ?>
                     <?php if (can($u, 'admin.settings')): ?>
                         <a class="nav-item<?= $nav === 'einstellungen' ? ' active' : '' ?>" href="<?= e(url('admin/einstellungen')) ?>"><span class="nav-icon">⚙</span>Einstellungen</a>

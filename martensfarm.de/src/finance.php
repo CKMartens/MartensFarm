@@ -362,6 +362,28 @@ function finance_delete(array $user, int $bookingId, string $reason = ''): bool
     return true;
 }
 
+/** Alle stornierten Buchungen eines Hofs löschen, die der Nutzer löschen darf. Gibt die Anzahl zurück. */
+function finance_delete_cancelled(array $user, int $savegameId, int $farmId, string $reason = ''): int
+{
+    $n = 0;
+    foreach (finance_cancelled_deletable($user, $savegameId, $farmId) as $b) {
+        if (finance_delete($user, (int) $b['id'], $reason)) {
+            $n++;
+        }
+    }
+    return $n;
+}
+
+/** Stornierte Buchungen, die der Nutzer löschen darf (nicht in abgeschlossenen Monaten, keine Korrekturen) */
+function finance_cancelled_deletable(?array $user, int $savegameId, int $farmId): array
+{
+    if (!can($user, 'finance.delete')) {
+        return [];
+    }
+    $rows = q('SELECT * FROM bookings WHERE savegame_id = ? AND farm_id = ? AND cancelled_at IS NOT NULL', [$savegameId, $farmId])->fetchAll();
+    return array_values(array_filter($rows, fn($b) => finance_can_delete($user, $b)));
+}
+
 /** Die letzten Einträge im Löschprotokoll eines Hofs */
 function finance_deletions(int $savegameId, int $farmId, int $limit = 20): array
 {

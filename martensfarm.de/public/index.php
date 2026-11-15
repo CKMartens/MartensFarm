@@ -234,6 +234,16 @@ try {
             require APP_ROOT . '/src/pages/booking_categories.php';
             break;
 
+        case 'GET admin/loeschprotokoll':
+            $user = require_login();
+            if (!can_any($user, ['finance.delete', 'finance.manage'])) {
+                http_response_code(403);
+                render('error', ['title' => 'Kein Zugriff', 'message' => 'Dafür fehlt dir die Berechtigung.']);
+                break;
+            }
+            require APP_ROOT . '/src/pages/deletions.php';
+            break;
+
         case 'POST admin/import':
             $user = require_permission('admin.settings');
             csrf_check();
