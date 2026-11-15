@@ -163,6 +163,18 @@ try {
             require APP_ROOT . '/src/pages/contract.php';
             break;
 
+        case 'GET nachrichten':
+        case 'POST nachrichten':
+            $user = require_login();
+            require APP_ROOT . '/src/pages/board.php';
+            break;
+
+        case 'GET nachrichten/beitrag':
+        case 'POST nachrichten/beitrag':
+            $user = require_login();
+            require APP_ROOT . '/src/pages/board_post.php';
+            break;
+
         case 'GET downloads':
         case 'POST downloads':
             $user = require_permission('downloads.view');

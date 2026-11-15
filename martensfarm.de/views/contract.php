@@ -167,3 +167,5 @@ $formHtml = function () use ($contract, $farms, $farmlands, $form, $dayOptions, 
         </section>
     <?php endif; ?>
 <?php endif; ?>
+
+<?php if ($contract): $boardRefType = 'contract'; $boardRefId = (string) $contract['id']; require __DIR__ . '/board_refs.php'; endif; ?>

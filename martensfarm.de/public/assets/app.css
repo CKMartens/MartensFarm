@@ -260,3 +260,15 @@ h2.spaced { margin-top: 1.2rem; }
 .fleet-map a:hover .map-dot { stroke: var(--text); }
 .fleet-map .map-ring { fill: none; stroke: var(--text); stroke-width: 4; opacity: .8; }
 p.spaced { margin-top: 1.2rem; }
+
+/* Nachrichtenboard */
+.tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
+.tab { padding: .35rem .8rem; border: 1px solid var(--line); border-radius: 999px; color: var(--text); background: var(--panel); }
+.tab.active { background: var(--green-dark); border-color: var(--green); }
+.tab:hover { text-decoration: none; border-color: var(--green); }
+.board-list .board-item { padding: .7rem 0; border-bottom: 1px solid var(--line); }
+.board-list .board-item:last-child { border-bottom: 0; }
+.board-list .board-item.pinned { border-left: 3px solid var(--warn); padding-left: .6rem; }
+.board-icon { margin-right: .3rem; }
+.board-extra { border: 1px dashed var(--line); border-radius: var(--radius); padding: .6rem .8rem; }
+.nav-badge { margin-left: auto; background: var(--warn); color: #0d1117; border-radius: 999px; padding: 0 .45rem; font-size: .75rem; font-weight: 700; }

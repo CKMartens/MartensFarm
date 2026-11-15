@@ -1,5 +1,5 @@
 <?php
-/** @var array $user @var ?array $snap @var ?array $lastOk @var array $players @var array $farms @var array $moneyHistory @var array $fleet @var array $repairs @var int $threshold @var array $pens @var int $animalCount @var array $penAlerts @var ?array $mfInfo @var array $tips @var ?array $finance @var array $myTasks @var int $freeTasks */
+/** @var array $user @var ?array $snap @var ?array $lastOk @var array $players @var array $farms @var array $moneyHistory @var array $fleet @var array $repairs @var int $threshold @var array $pens @var int $animalCount @var array $penAlerts @var ?array $mfInfo @var array $tips @var ?array $finance @var array $myTasks @var int $freeTasks @var int $boardUnread @var array $boardPinned */
 // Server-Kachel: unterscheiden zwischen "Server antwortet", "Server antwortet nicht" und "wir haben länger nicht nachgesehen"
 $fetchAge = $snap ? time() - strtotime($snap['fetched_at']) : null;
 $stale = $fetchAge !== null && $fetchAge > 900;          // länger als 15 Minuten kein Abruf (Cron alle 5 Min.)
@@ -83,7 +83,17 @@ if (count($moneyHistory) >= 2) {
         <div class="tile-value"><?= (int) $fleet['n'] ?> <small>Fahrzeuge</small></div>
         <div class="tile-sub">Kaufwert <?= e(fmt_money((int) $fleet['value'])) ?></div>
     </div>
+    <a class="tile tile-link" href="<?= e(url('nachrichten')) ?>">
+        <div class="tile-label">Neue Nachrichten</div>
+        <div class="tile-value <?= $boardUnread ? 'warn' : 'ok' ?>"><?= $boardUnread ? (int) $boardUnread : '✓' ?></div>
+        <div class="tile-sub"><?= $boardUnread ? 'Beiträge und Antworten seit deinem letzten Besuch' : 'Alles gelesen' ?></div>
+    </a>
 </section>
+
+<?php foreach ($boardPinned as $bp): ?>
+    <div class="alert alert-info">📣 <a href="<?= e(url('nachrichten/beitrag?id=' . (int) $bp['id'])) ?>"><strong><?= e($bp['title']) ?></strong></a>
+        <span class="small muted">· <?= e(fmt_datetime($bp['created_at'])) ?></span></div>
+<?php endforeach; ?>
 
 <div class="grid-2">
     <section class="card">

@@ -11,6 +11,7 @@ Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im 
 - Preise vom Server mit bestem und schlechtestem Monat
 - Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4), Monatsabschluss mit Korrekturbuchung und Löschen (ab 0.8)
 - Downloads: Mods, die nicht im ModHub sind, für die Mitspieler; Server-Liste automatisch aus dem Stats-Feed (ab 0.6)
+- Nachrichtenboard: Ankündigungen, Mod-Wünsche und Hinweise zu Aufgaben, Lohnaufträgen und Fahrzeugen (ab 0.11)
 - Aufgaben-Board mit automatischen Werkstatt- und Tierpflege-Aufgaben, Lohnaufträge mit Buchungsvorschlag (ab 0.7), Löschen und Aufräumen (ab 0.9)
 
 ---
@@ -291,6 +292,23 @@ So funktioniert's:
   mit Bezug auf das Fahrzeug samt Summe. Knöpfe „Kosten buchen“ und „Aufgabe“ belegen Hof und Fahrzeug vor.
 - **Kosten je Fahrzeug:** Beim Buchen lässt sich optional ein Fahrzeug wählen. Kauf- und Verkaufsvorschläge hängen schon dran.
   Die Spalte „Gebucht“ im Fuhrpark und die Summe auf der Detailseite sieht nur, wer die Finanzen des Hofs sehen darf.
+
+### Update auf 0.11 (Nachrichtenboard)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Legt `board_posts`, `board_replies` und `board_reads` an und setzt einmalig
+   die neuen Rechte: Farmmanager **Beiträge schreiben**, **Ankündigen** und **Moderieren**, Spieler **Beiträge schreiben**. Gäste lesen nur.
+
+So funktioniert's:
+- Seite `/nachrichten` mit drei Arten: **Ankündigung** (an alle, optional angeheftet und mit Ablaufdatum, erscheint dann auch oben
+  auf dem Dashboard), **Mod-Wunsch** (Link zum ModHub oder zur Quelle, Status offen/angenommen/abgelehnt/installiert; bei „installiert“
+  Verweis auf den Eintrag in den Downloads) und **Hinweis** (optional mit Bezug auf Aufgabe, Lohnauftrag oder Fahrzeug, erscheint dort
+  auch auf der Detailseite unter „Hinweise“). Zu jedem Beitrag gibt es Antworten.
+- **Ungelesen:** Zähler im Menü und Kachel „Neue Nachrichten“ auf dem Dashboard. Gelesen ist, was man beim letzten Öffnen von `/nachrichten` gesehen hat.
+- **Ausblenden statt löschen:** Eigene Beiträge und Antworten blendet man selbst aus, fremde nur mit *Moderieren*. Wer moderiert,
+  sieht Ausgeblendetes über „Ausgeblendete zeigen“ und kann es wieder einblenden. Der Urheber bleibt immer erhalten.
+- **Schutz:** nur angemeldet, CSRF, nur Text (wird escaped), höchstens 30 Beiträge plus Antworten pro Nutzer und Stunde.
+- Die Beiträge gelten über Savegames hinweg.
 
 ---
 

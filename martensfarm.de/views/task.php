@@ -136,3 +136,5 @@ $closed = in_array($task['status'], ['done', 'dropped'], true);
 <?php if ($canDelete && !$confirmDelete): ?>
     <p class="muted small"><a href="<?= e(url('aufgaben/aufgabe?id=' . (int) $task['id'] . '&loeschen=1#loeschen')) ?>">Aufgabe löschen …</a></p>
 <?php endif; ?>
+
+<?php $boardRefType = 'task'; $boardRefId = (string) $task['id']; require __DIR__ . '/board_refs.php'; ?>

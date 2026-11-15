@@ -128,3 +128,5 @@ $canBook = $canFinance && $v['removed_at'] === null && finance_can_book($user, $
         <?php endif; ?>
     </section>
 <?php endif; ?>
+
+<?php $boardRefType = 'vehicle'; $boardRefId = (string) $vehicle['unique_id']; require __DIR__ . '/board_refs.php'; ?>

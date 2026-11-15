@@ -33,6 +33,9 @@ const PERMISSIONS = [
     'tasks.work'     => ['Aufgaben', 'Aufgaben bearbeiten', 'Offene Aufgaben übernehmen, eigene verschieben und kommentieren'],
     'tasks.delete'   => ['Aufgaben', 'Aufgaben löschen', 'Aufgaben endgültig löschen, mit Kommentaren und Verlauf'],
     'contracts.manage' => ['Aufgaben', 'Lohnaufträge verwalten', 'Lohnaufträge anlegen, ändern, abschließen und stornieren'],
+    'board.post'     => ['Nachrichten', 'Beiträge schreiben', 'Hinweise und Mod-Wünsche schreiben, antworten, eigene ausblenden'],
+    'board.announce' => ['Nachrichten', 'Ankündigen', 'Ankündigungen an alle, anheften und mit Ablaufdatum'],
+    'board.moderate' => ['Nachrichten', 'Moderieren', 'Fremde Beiträge ausblenden, Status von Mod-Wünschen setzen'],
 ];
 
 /** Alle Rollen, sortiert: role_key => Zeile */
