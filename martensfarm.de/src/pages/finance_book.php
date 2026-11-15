@@ -11,7 +11,7 @@ if ($sgId === null || !$farmIds) {
     return;
 }
 $farms = array_intersect_key(active_farms(), array_flip($farmIds));
-$cats = array_filter(finance_categories(), fn($c) => (int) $c['is_active'] === 1);
+$cats = finance_bookable_categories();
 $errors = [];
 
 // Vorschlag aus einem Ereignis (Fahrzeug, Farmland)
@@ -45,6 +45,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if ($day < 0 || $day > 1_000_000) {
         $errors[] = 'Der Spieltag passt nicht.';
+    }
+    if (in_array($farmId, $farmIds, true) && $day >= 0 && ($lock = finance_day_locked($sgId, $farmId, $day))) {
+        $errors[] = 'Spieltag ' . $day . ' gehört zum abgeschlossenen Monat ' . game_month_label($lock['period'], (int) $lock['month_start'], (int) $lock['month_end'])
+            . '. Bitte einen späteren Tag nehmen oder den Monat wieder öffnen lassen.';
     }
     if (mb_strlen($text) > 255) {
         $errors[] = 'Der Text ist zu lang (höchstens 255 Zeichen).';

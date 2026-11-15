@@ -1,10 +1,18 @@
 <?php
 /** @var array $user @var array $farms @var int $farmId @var ?array $farm @var array $savegames @var int $sgId @var ?int $currentSg @var bool $readOnly
- *  @var array $rec @var array $gameOpen @var array $suggestions @var array $bookings @var array $totals @var array $cats @var ?int $gameDay @var bool $hasGameData */
+ *  @var array $rec @var array $gameOpen @var array $suggestions @var array $bookings @var array $totals @var array $cats @var ?int $gameDay @var bool $hasGameData
+ *  @var array $months @var array $deletions @var ?array $confirmDelete */
 $sign = fn(int $v): string => ($v > 0 ? '+' : '') . fmt_money($v);
 $cls = fn(int $v): string => $v > 0 ? 'ok' : ($v < 0 ? 'bad' : 'muted');
 $open = (int) $rec['open'];
 $q = '?hof=' . $farmId . ($sgId !== (int) $currentSg ? '&sg=' . $sgId : '');
+$isLocked = fn(int $day): bool => $sgId > 0 && finance_day_locked($sgId, $farmId, $day) !== null;
+$monthStatus = [
+    'closed'  => ['abgeschlossen', ''],
+    'ready'   => ['kann abgeschlossen werden', 'warn'],
+    'waiting' => ['wartet auf den nächsten Save', ''],
+    'running' => ['läuft noch', ''],
+];
 ?>
 <header class="page-head">
     <div>
@@ -41,6 +49,28 @@ $q = '?hof=' . $farmId . ($sgId !== (int) $currentSg ? '&sg=' . $sgId : '');
     <div class="alert alert-info">Archiv: Dieses Savegame läuft nicht mehr, hier kann nur noch geschaut werden.</div>
 <?php elseif ($gameDay === null): ?>
     <div class="alert alert-warning">Der Spieltag ist noch unbekannt. Er kommt mit dem nächsten Save, dafür muss die Export-Mod ab Version 0.3 laufen.</div>
+<?php endif; ?>
+
+<?php if ($confirmDelete): $cd = $confirmDelete; ?>
+    <section class="card" id="loeschen">
+        <h2>Buchung endgültig löschen?</h2>
+        <p>Tag <?= (int) $cd['game_day'] ?> · <?= e($cats[(int) $cd['category_id']]['name'] ?? '?') ?> · <strong><?= e($sign((int) $cd['amount'])) ?></strong>
+            <?= $cd['text'] !== '' ? '· ' . e($cd['text']) : '' ?></p>
+        <p class="muted small">Weg ist weg: Die Buchung verschwindet aus Kassenbuch und Abgleich. Im Löschprotokoll unten bleibt stehen, was es war und wer sie gelöscht hat.
+            Für normale Fehlbuchungen reicht meist „Stornieren“.</p>
+        <form method="post" action="<?= e(url('finanzen' . $q)) ?>" class="stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="<?= (int) $cd['id'] ?>">
+            <label>Grund (optional)
+                <input type="text" name="reason" maxlength="255" placeholder="z. B. doppelt erfasst, Tippfehler">
+            </label>
+            <div class="btn-row">
+                <button class="btn btn-primary" type="submit">Endgültig löschen</button>
+                <a class="btn btn-ghost" href="<?= e(url('finanzen' . $q)) ?>">Abbrechen</a>
+            </div>
+        </form>
+    </section>
 <?php endif; ?>
 
 <section class="tiles">
@@ -154,6 +184,54 @@ $q = '?hof=' . $farmId . ($sgId !== (int) $currentSg ? '&sg=' . $sgId : '');
 </div>
 
 <section class="card">
+    <h2>Monatsabschluss</h2>
+    <?php if ($months): ?>
+        <div class="table-wrap">
+        <table class="table compact">
+            <thead><tr><th>Spielmonat</th><th class="num">Nicht zugeordnet</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            <?php foreach ($months as $m): [$stLabel, $stCls] = $monthStatus[$m['status']]; $c = $m['close']; ?>
+                <tr>
+                    <td><?= e($m['label']) ?></td>
+                    <td class="num"><?php if ($c): ?>
+                            <?= (int) $c['open_amount'] !== 0 ? 'Korrektur ' . e($sign((int) $c['open_amount'])) : '<span class="ok">✓</span>' ?>
+                        <?php else: ?>
+                            <?= abs($m['open']) >= 1 ? '<span class="badge warn">' . e($sign($m['open'])) . '</span>' : '<span class="ok">✓</span>' ?>
+                        <?php endif; ?></td>
+                    <td><span class="badge <?= $stCls ?>"><?= $c ? '🔒 ' : '' ?><?= e($stLabel) ?></span>
+                        <?php if ($c): ?><br><span class="muted small">von <?= e($c['closed_nick'] ?? '?') ?>, <?= e(fmt_datetime($c['closed_at'])) ?></span><?php endif; ?></td>
+                    <td class="actions">
+                        <?php if ($m['status'] === 'ready' && can($user, 'finance.close')): ?>
+                            <form method="post" action="<?= e(url('finanzen' . $q)) ?>">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="close_month">
+                                <input type="hidden" name="month" value="<?= (int) $m['start'] ?>">
+                                <button class="btn btn-ghost btn-sm" type="submit"
+                                        title="<?= abs($m['open']) >= 1 ? 'Bucht ' . e($sign($m['open'])) . ' als Korrektur (Abgleich) und sperrt die Tage' : 'Sperrt die Tage, es ist nichts zu korrigieren' ?>">Abschließen</button>
+                            </form>
+                        <?php elseif ($c && $sgId === (int) $currentSg && can($user, 'finance.manage')): ?>
+                            <form method="post" action="<?= e(url('finanzen' . $q)) ?>">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="reopen_month">
+                                <input type="hidden" name="id" value="<?= (int) $c['id'] ?>">
+                                <button class="btn btn-ghost btn-sm" type="submit" title="Storniert die Korrektur, die Tage sind wieder buchbar">Wieder öffnen</button>
+                            </form>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        </div>
+    <?php else: ?>
+        <p class="muted">Noch kein Monat zum Abschließen. Dafür braucht es den Spielkalender aus der Export-Mod und mindestens zwei Saves.</p>
+    <?php endif; ?>
+    <p class="muted small">Ist ein Spielmonat vorbei und hat der Server danach gespeichert, lässt sich der Rest, der sich nicht zuordnen lässt
+        (Kleinbeträge, „Einkauf, ohne Angabe“ …), mit einer Buchung auf <em>Korrektur (Abgleich)</em> ausgleichen. Danach steht der Monat auf 0
+        und ist gesperrt: keine neuen Buchungen, Stornos oder Löschungen mehr für seine Tage. Wieder öffnen kann, wer Buchungssätze verwalten darf.</p>
+</section>
+
+<section class="card">
     <h2>Abgleich je Spieltag</h2>
     <?php if ($rec['rows']): ?>
         <div class="table-wrap">
@@ -162,7 +240,7 @@ $q = '?hof=' . $farmId . ($sgId !== (int) $currentSg ? '&sg=' . $sgId : '');
             <tbody>
             <?php foreach (array_slice($rec['rows'], 0, 40) as $r): ?>
                 <tr>
-                    <td><?= $r['from_day'] < $r['day'] ? (int) $r['from_day'] . '–' : '' ?><?= (int) $r['day'] ?><?= $gameDay !== null && $r['day'] === $gameDay ? ' <span class="badge">läuft</span>' : '' ?></td>
+                    <td><?= $r['from_day'] < $r['day'] ? (int) $r['from_day'] . '–' : '' ?><?= (int) $r['day'] ?><?= $gameDay !== null && $r['day'] === $gameDay ? ' <span class="badge">läuft</span>' : '' ?><?= $isLocked((int) $r['day']) ? ' <span title="Monat abgeschlossen">🔒</span>' : '' ?></td>
                     <td class="num"><?= e(fmt_money($r['money'])) ?></td>
                     <td class="num <?= $cls($r['delta']) ?>"><?= e($sign($r['delta'])) ?></td>
                     <td class="num"><?= $r['loan_delta'] ? e($sign($r['loan_delta'])) : '–' ?></td>
@@ -191,7 +269,7 @@ $q = '?hof=' . $farmId . ($sgId !== (int) $currentSg ? '&sg=' . $sgId : '');
             <?php foreach ($bookings as $b): $cancelled = $b['cancelled_at'] !== null; ?>
                 <tr<?= $cancelled ? ' class="inactive"' : '' ?>>
                     <td><?= (int) $b['game_day'] ?></td>
-                    <td><?= e($cats[(int) $b['category_id']]['name'] ?? '?') ?><?= $b['source'] === 'game' ? ' <span class="badge">Spiel</span>' : '' ?></td>
+                    <td><?= e($cats[(int) $b['category_id']]['name'] ?? '?') ?><?= $b['source'] === 'game' ? ' <span class="badge">Spiel</span>' : '' ?><?= $b['source'] === 'correction' ? ' <span class="badge">Monatsabschluss</span>' : '' ?><?= $isLocked((int) $b['game_day']) ? ' <span title="Monat abgeschlossen">🔒</span>' : '' ?></td>
                     <td><?= e($b['text']) ?><?= $cancelled ? '<br><span class="small">storniert von ' . e($b['cancelled_nick'] ?? '?') . ', ' . e(fmt_datetime($b['cancelled_at'])) . '</span>' : '' ?></td>
                     <td class="num <?= $cancelled ? '' : $cls((int) $b['amount']) ?>"><?= e($sign((int) $b['amount'])) ?></td>
                     <td><?= e($b['nickname'] ?? '–') ?><br><span class="muted small"><?= e(fmt_datetime($b['created_at'])) ?></span></td>
@@ -204,6 +282,9 @@ $q = '?hof=' . $farmId . ($sgId !== (int) $currentSg ? '&sg=' . $sgId : '');
                                 <button class="btn btn-ghost btn-sm" type="submit">Stornieren</button>
                             </form>
                         <?php endif; ?>
+                        <?php if (finance_can_delete($user, $b)): ?>
+                            <a class="btn btn-ghost btn-sm" href="<?= e(url('finanzen' . $q . '&loeschen=' . (int) $b['id'] . '#loeschen')) ?>">Löschen</a>
+                        <?php endif; ?>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -214,3 +295,26 @@ $q = '?hof=' . $farmId . ($sgId !== (int) $currentSg ? '&sg=' . $sgId : '');
         <p class="muted">Noch keine Buchungen.</p>
     <?php endif; ?>
 </section>
+
+<?php if ($deletions): ?>
+    <section class="card">
+        <h2>Löschprotokoll</h2>
+        <div class="table-wrap">
+        <table class="table compact">
+            <thead><tr><th>Tag</th><th>Buchungssatz</th><th>Text</th><th class="num">Betrag</th><th>Angelegt</th><th>Gelöscht</th></tr></thead>
+            <tbody>
+            <?php foreach ($deletions as $d): ?>
+                <tr class="inactive">
+                    <td><?= (int) $d['game_day'] ?></td>
+                    <td><?= e($cats[(int) $d['category_id']]['name'] ?? '?') ?><?= (int) $d['was_cancelled'] === 1 ? ' <span class="badge">war storniert</span>' : '' ?></td>
+                    <td><?= e($d['text']) ?><?= $d['reason'] !== '' ? '<br><span class="small">Grund: ' . e($d['reason']) . '</span>' : '' ?></td>
+                    <td class="num"><?= e($sign((int) $d['amount'])) ?></td>
+                    <td><?= e($d['created_nick'] ?? '–') ?><br><span class="muted small"><?= e(fmt_datetime($d['created_at'])) ?></span></td>
+                    <td><?= e($d['deleted_nick'] ?? '–') ?><br><span class="muted small"><?= e(fmt_datetime($d['deleted_at'])) ?></span></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+        </div>
+    </section>
+<?php endif; ?>

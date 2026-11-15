@@ -1,6 +1,6 @@
 # ToDo / Roadmap
 
-Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten Entscheidungen.
+Stand: 15.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten Entscheidungen.
 
 **Rahmen für alles:**
 - Server steht im Hetzner-Netz: keine offenen Formulare, Rate-Limits, schonende Abrufe
@@ -14,7 +14,7 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | # | Paket | Umfang |
 | --- | --- | --- |
 | 1 | Grundlagen: Rollen und Rechte, Einstellungen | erledigt (0.3) |
-| 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | erledigt (0.4) |
+| 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | erledigt (0.4, Monatsabschluss 0.8) |
 | 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben und Lohnaufträge | erledigt (0.7) |
 | 4 | Fahrzeugverwaltung erweitern | klein |
 | 5 | Datenweg erweitern: Export-Mod für Tiere, Lager und Höfe 2–8 | erledigt (0.2) |
@@ -54,8 +54,10 @@ Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert
   - Farmland-Besitzer wechselt in `stats.xml` → Landkauf/-verkauf
   - [x] Lohnauftrag erledigt → Einnahme (und Ausgabe beim Auftraggeber, wenn es ein Hof im Spiel ist)
 - [ ] Im echten Spiel prüfen: Kommen die Arten so an, wie erwartet (`bin/check-mod-export.php`, Abschnitt Finanzen)? Passt die Summe zur Kontostandsänderung?
-- [ ] **Korrekturbuchung zum Monatsende** (vorgemerkt): Bleibt am Monatsende eine Differenz zum Kontostand, die sich nicht zuordnen lässt (z. B. Kleinbeträge, „Einkauf, ohne Angabe“), wird sie mit einer Korrekturbuchung ausgeglichen. Danach geht der Abgleich für den Monat auf 0. Offen: eigener Buchungssatz „Korrektur“ oder nur eine eigene Quelle, und ob der Monat danach als abgeschlossen gilt.
-- [ ] **Buchungen löschen** (vorgemerkt): zusätzlich zum Stornieren echtes Löschen, z. B. für Fehleingaben. Nur mit eigenem Recht (z. B. `finance.delete`), mit Rückfrage; offen: ob ein Eintrag im Verlauf bleibt, wer wann was gelöscht hat
+- [x] **Korrekturbuchung zum Monatsende** (0.8): Bleibt am Monatsende eine Differenz zum Kontostand, die sich nicht zuordnen lässt (z. B. Kleinbeträge, „Einkauf, ohne Angabe“), wird sie mit einer Korrekturbuchung ausgeglichen. Danach geht der Abgleich für den Monat auf 0.
+  - Eigener Buchungssatz **Korrektur (Abgleich)**, beim normalen Buchen nicht auswählbar
+  - Der Monat gilt danach als **abgeschlossen**: keine Buchungen, Stornos oder Löschungen mehr für seine Tage. Recht *Monat abschließen* (`finance.close`), wieder öffnen mit *Buchungssätze verwalten* (Korrektur wird storniert)
+- [x] **Buchungen löschen** (0.8): zusätzlich zum Stornieren echtes Löschen, eigenes Recht `finance.delete` (nach dem Update nur Admin), mit Rückfrage und optionalem Grund. Im **Löschprotokoll** bleibt stehen, wer wann was gelöscht hat
 
 ## 3. Aufgaben ✔
 

@@ -9,7 +9,7 @@ Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im 
 - Dashboard: Server online, Spieler, Uhrzeit im Spiel, Kontostand mit Verlauf, fällige Reparaturen, Verkaufstipps
 - Fuhrpark mit Schaden, Stunden, Füllständen und Verkaufshistorie
 - Preise vom Server mit bestem und schlechtestem Monat
-- Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4)
+- Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4), Monatsabschluss mit Korrekturbuchung und Löschen (ab 0.8)
 - Downloads: Mods, die nicht im ModHub sind, für die Mitspieler; Server-Liste automatisch aus dem Stats-Feed (ab 0.6)
 - Aufgaben-Board mit automatischen Werkstatt- und Tierpflege-Aufgaben, Lohnaufträge mit Buchungsvorschlag (ab 0.7)
 
@@ -244,6 +244,26 @@ So funktioniert's:
   Daraus eine oder mehrere Aufgaben. Sind alle erledigt (oder hakt man den Auftrag ab), entsteht unter Finanzen ein
   Vorschlag *Lohnauftrag erledigt* (Einnahme beim eigenen Hof) und, wenn der Auftraggeber ein Hof im Spiel ist,
   *Lohnarbeit bezahlen* (Ausgabe beim Auftraggeber). Die App führt nur Buch, im Spiel fließt kein Geld.
+
+### Update auf 0.8 (Monatsabschluss, Buchungen löschen)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Legt `finance_month_closes` und `booking_deletions` an, dazu den Buchungssatz
+   **Korrektur (Abgleich)** (je einmal als Einnahme und Ausgabe) und gibt dem Farmmanager einmalig das neue Recht **Monat abschließen**.
+   **Buchungen löschen** hat nach dem Update nur der Admin.
+
+So funktioniert's:
+- **Monatsabschluss** (Karte auf `/finanzen`): Ist ein Spielmonat vorbei und hat der Server danach gespeichert, zeigt die Liste
+  „kann abgeschlossen werden“. *Abschließen* bucht den Rest, der sich nicht zuordnen lässt, auf *Korrektur (Abgleich)*, am letzten
+  Abgleich-Tag des Monats. Danach steht der Monat auf 0 und ist gesperrt: keine neuen Buchungen, Stornos oder Löschungen für seine Tage,
+  und die Spiel-Vorschläge dafür verschwinden.
+- Ein Abgleich-Zeitraum (von Save zu Save) zählt zu dem Monat, in dem sein letzter Tag liegt. Gesperrt werden genau die Tage,
+  die in diese Zeiträume fallen.
+- **Wieder öffnen** kann, wer *Buchungssätze verwalten* darf. Die Korrektur wird dabei storniert, nicht gelöscht.
+- Den Buchungssatz *Korrektur (Abgleich)* gibt es beim normalen Buchen nicht, nur der Monatsabschluss bucht darauf.
+- **Löschen** (Recht *Buchungen löschen*): zusätzlich zum Stornieren, z. B. für Fehleingaben. Mit Rückfrage und optionalem Grund.
+  Die Buchung verschwindet aus Kassenbuch und Abgleich, im **Löschprotokoll** unten auf der Finanzseite bleibt stehen, was es war,
+  wer sie angelegt und wer sie gelöscht hat. Ein verknüpfter Vorschlag wird wieder geöffnet.
 
 ---
 
