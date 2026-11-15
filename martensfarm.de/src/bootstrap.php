@@ -19,6 +19,7 @@ if (config('app.debug', false)) {
     ini_set('display_errors', '0');
 }
 
+require APP_ROOT . '/src/version.php';
 require APP_ROOT . '/src/helpers.php';
 require APP_ROOT . '/src/db.php';
 require APP_ROOT . '/src/auth.php';

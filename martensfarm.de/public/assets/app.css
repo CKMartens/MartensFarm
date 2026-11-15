@@ -272,3 +272,10 @@ p.spaced { margin-top: 1.2rem; }
 .board-icon { margin-right: .3rem; }
 .board-extra { border: 1px dashed var(--line); border-radius: var(--radius); padding: .6rem .8rem; }
 .nav-badge { margin-left: auto; background: var(--warn); color: #0d1117; border-radius: 999px; padding: 0 .45rem; font-size: .75rem; font-weight: 700; }
+
+/* Rückfrage vor dem Löschen, direkt dort, wo geklickt wurde */
+.confirm-box { border: 1px solid var(--bad); border-radius: var(--radius); background: var(--panel-2); padding: .8rem 1rem; margin-bottom: 1rem; scroll-margin-top: 1rem; }
+.confirm-box h3 { margin: 0 0 .4rem; }
+/* Stornierte Zeilen blass, ihre Knöpfe aber nicht (die bleiben bedienbar) */
+.table tr.inactive td.actions { opacity: 1; }
+.app-version { color: var(--muted); font-size: .75rem; text-align: center; margin-top: .4rem; }

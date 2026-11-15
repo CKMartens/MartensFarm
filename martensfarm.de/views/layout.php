@@ -72,6 +72,7 @@ $items = [
                 <?= csrf_field() ?>
                 <button type="submit" class="btn btn-ghost btn-block">Abmelden</button>
             </form>
+            <div class="app-version" title="Version der App und PR, mit dem sie kam">v<?= e(APP_VERSION) ?> · Build #<?= (int) APP_BUILD ?></div>
         <?php endif; ?>
     </aside>
     <main class="main">

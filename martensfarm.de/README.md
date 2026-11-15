@@ -314,6 +314,14 @@ So funktioniert's:
 - **Schutz:** nur angemeldet, CSRF, nur Text (wird escaped), höchstens 30 Beiträge plus Antworten pro Nutzer und Stunde.
 - Die Beiträge gelten über Savegames hinweg.
 
+### Update auf 0.13 (Version anzeigen, Löschen bedienbarer)
+
+Nur Dateien hochladen, kein Datenbank-Update.
+- Unten in der Seitenleiste steht jetzt **Version und Build** (z. B. `v0.13 · Build #22`, Build = Nummer des PRs).
+  Daran sieht man nach dem Hochladen sofort, ob der Server den neuen Stand hat. Gepflegt wird das in `src/version.php`.
+- Stornierte Zeilen im Kassenbuch sind weiter blass, ihre Knöpfe aber nicht mehr. Die Rückfrage vor dem Löschen erscheint
+  direkt über dem Kassenbuch statt ganz oben auf der Seite.
+
 ---
 
 ## Nächste Phasen
