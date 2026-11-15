@@ -59,6 +59,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             redirect($self);
 
+        case 'delete':
+            if (!task_can_delete($user, $task)) {
+                flash('error', 'Diese Aufgabe darfst du nicht löschen.');
+                redirect($self);
+            }
+            task_delete($id);
+            flash('success', 'Aufgabe „' . $task['title'] . '“ gelöscht.');
+            redirect('aufgaben' . ($task['farm_id'] ? '?hof=' . (int) $task['farm_id'] : ''));
+
         case 'comment':
             $text = trim((string) ($_POST['text'] ?? ''));
             if (task_can_comment($user) && $text !== '' && mb_strlen($text) <= 1000) {
@@ -116,4 +125,5 @@ render('task', compact('user', 'task', 'farms', 'people', 'canAssign', 'canEdit'
     'title' => $task['title'], 'nav' => 'aufgaben', 'events' => task_events($id), 'names' => user_names(), 'ref' => task_ref($task),
     'moves' => task_allowed_moves($user, $task), 'refOptions' => task_ref_options(), 'dayOptions' => game_day_options($form['due_day']),
     'action' => 'aufgaben/aufgabe', 'openEdit' => (bool) $errors,
+    'canDelete' => task_can_delete($user, $task), 'confirmDelete' => isset($_GET['loeschen']) && task_can_delete($user, $task),
 ]);

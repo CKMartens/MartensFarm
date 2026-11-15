@@ -11,7 +11,7 @@ Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im 
 - Preise vom Server mit bestem und schlechtestem Monat
 - Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4), Monatsabschluss mit Korrekturbuchung und Löschen (ab 0.8)
 - Downloads: Mods, die nicht im ModHub sind, für die Mitspieler; Server-Liste automatisch aus dem Stats-Feed (ab 0.6)
-- Aufgaben-Board mit automatischen Werkstatt- und Tierpflege-Aufgaben, Lohnaufträge mit Buchungsvorschlag (ab 0.7)
+- Aufgaben-Board mit automatischen Werkstatt- und Tierpflege-Aufgaben, Lohnaufträge mit Buchungsvorschlag (ab 0.7), Löschen und Aufräumen (ab 0.9)
 
 ---
 
@@ -264,6 +264,20 @@ So funktioniert's:
 - **Löschen** (Recht *Buchungen löschen*): zusätzlich zum Stornieren, z. B. für Fehleingaben. Mit Rückfrage und optionalem Grund.
   Die Buchung verschwindet aus Kassenbuch und Abgleich, im **Löschprotokoll** unten auf der Finanzseite bleibt stehen, was es war,
   wer sie angelegt und wer sie gelöscht hat. Ein verknüpfter Vorschlag wird wieder geöffnet.
+
+### Update auf 0.9 (Aufgaben löschen und aufräumen)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Ergänzt `tasks` um den Erledigt-Spieltag (`done_day`).
+   Das neue Recht **Aufgaben löschen** hat nach dem Update nur der Admin.
+
+So funktioniert's:
+- **Löschen:** Unten auf der Aufgabenseite „Aufgabe löschen …“, danach eine Rückfrage. Kommentare und Verlauf gehen mit.
+  Aufgaben eines noch offenen Lohnauftrags lassen sich nicht löschen, sonst stimmt dessen Fortschritt nicht mehr.
+- **Aufräumen:** Bei jedem Import löscht die App erledigte Aufgaben, die in einem früheren Spielmonat erledigt wurden
+  (Spielkalender aus der Export-Mod). Verworfene bleiben, ebenso Aufgaben offener Lohnaufträge. Buchungsvorschläge hängen
+  am Lohnauftrag, nicht an der Aufgabe, und bleiben deshalb erhalten. Abschaltbar unter **Einstellungen → Aufgaben**.
+- Aufgaben, die schon vor dem Update erledigt waren, bekommen beim ersten Import den aktuellen Spieltag und gehen im nächsten Spielmonat.
 
 ---
 

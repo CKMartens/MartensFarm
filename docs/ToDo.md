@@ -15,7 +15,7 @@ Stand: 15.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | --- | --- | --- |
 | 1 | Grundlagen: Rollen und Rechte, Einstellungen | erledigt (0.3) |
 | 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | erledigt (0.4, Monatsabschluss 0.8) |
-| 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben und Lohnaufträge | erledigt (0.7) |
+| 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben und Lohnaufträge | erledigt (0.7, Löschen/Aufräumen 0.9) |
 | 4 | Fahrzeugverwaltung erweitern | klein |
 | 5 | Datenweg erweitern: Export-Mod für Tiere, Lager und Höfe 2–8 | erledigt (0.2) |
 | 6 | Downloadverwaltung | erledigt (0.6) |
@@ -71,8 +71,8 @@ Seite `/aufgaben` (0.7). Aufgaben manuell oder automatisch anlegen und an Mitspi
 - [x] Drag & Drop mit externem JS (`assets/tasks.js`), CSP-konform, ohne JS über Knöpfe
 - [x] Einstellungen: Automatik an/aus, ob Spieler selbst abhaken dürfen oder erst „Prüfung“
 - [ ] Im echten Spiel prüfen: Kommen die Auto-Aufgaben zum richtigen Zeitpunkt und schließen sie sich nach dem Save?
-- [ ] **Aufgaben löschen** (vorgemerkt): manuell löschen können (eigenes Recht, z. B. `tasks.delete`, mit Rückfrage), Kommentare und Verlauf gehen mit
-- [ ] **Erledigte automatisch aufräumen** (vorgemerkt): Aufgaben in „Erledigt“ werden im nächsten Ingame-Monat automatisch gelöscht (Spielkalender aus dem Export). Vorher prüfen: Lohnaufträge und Buchungsvorschläge dürfen dadurch keinen Verweis verlieren
+- [x] **Aufgaben löschen** (0.9): eigenes Recht `tasks.delete` (nach dem Update nur Admin), mit Rückfrage, Kommentare und Verlauf gehen mit. Nicht bei Aufgaben eines offenen Lohnauftrags
+- [x] **Erledigte automatisch aufräumen** (0.9): Aufgaben in „Erledigt“ werden im nächsten Ingame-Monat beim Import gelöscht (abschaltbar unter Einstellungen). Lohnaufträge verlieren nichts: Aufgaben offener Aufträge bleiben, Buchungsvorschläge hängen am Auftrag
 
 ### Lohnaufträge ✔
 

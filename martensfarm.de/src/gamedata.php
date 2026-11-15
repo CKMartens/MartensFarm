@@ -476,6 +476,7 @@ function run_import(bool $force = false): array
     if ($sgId !== null) {
         try {
             tasks_auto_sync($sgId, $now, $log);
+            tasks_cleanup_done($sgId, $log);
         } catch (Throwable $e) {
             $log[] = 'Aufgaben: ' . $e->getMessage();
         }

@@ -31,6 +31,7 @@ const PERMISSIONS = [
     'tasks.create'   => ['Aufgaben', 'Aufgaben anlegen', 'Neue Aufgaben aufs Board stellen, eigene bearbeiten und verwerfen'],
     'tasks.assign'   => ['Aufgaben', 'Aufgaben verteilen', 'Aufgaben zuweisen, alle bearbeiten und verschieben, Prüfung abhaken'],
     'tasks.work'     => ['Aufgaben', 'Aufgaben bearbeiten', 'Offene Aufgaben übernehmen, eigene verschieben und kommentieren'],
+    'tasks.delete'   => ['Aufgaben', 'Aufgaben löschen', 'Aufgaben endgültig löschen, mit Kommentaren und Verlauf'],
     'contracts.manage' => ['Aufgaben', 'Lohnaufträge verwalten', 'Lohnaufträge anlegen, ändern, abschließen und stornieren'],
 ];
 

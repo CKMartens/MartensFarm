@@ -440,7 +440,9 @@ CREATE TABLE IF NOT EXISTS tasks (
     updated_at     DATETIME NOT NULL,
     done_at        DATETIME NULL,
     done_by        INT UNSIGNED NULL,
+    done_day       INT NULL,                                 -- Spieltag, an dem erledigt (fürs Aufräumen, ab 0.9)
     KEY idx_task_board (savegame_id, status),
+    KEY idx_task_done (savegame_id, status, done_day),
     KEY idx_task_auto (savegame_id, auto_key),
     KEY idx_task_assignee (assignee_id, status),
     KEY idx_task_contract (contract_id)

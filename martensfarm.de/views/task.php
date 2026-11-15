@@ -1,6 +1,7 @@
 <?php
 /** @var array $user @var array $task @var array $farms @var array $people @var bool $canAssign @var bool $canEdit @var array $errors @var array $form
- *  @var ?array $contract @var array $events @var array $names @var ?array $ref @var array $moves @var bool $openEdit */
+ *  @var ?array $contract @var array $events @var array $names @var ?array $ref @var array $moves @var bool $openEdit
+ *  @var bool $canDelete @var bool $confirmDelete */
 $overdue = task_is_overdue($task);
 $uid = (int) $user['id'];
 $isMine = $task['assignee_id'] !== null && (int) $task['assignee_id'] === $uid;
@@ -18,6 +19,19 @@ $closed = in_array($task['status'], ['done', 'dropped'], true);
         </p>
     </div>
 </header>
+
+<?php if ($confirmDelete): ?>
+    <section class="card" id="loeschen">
+        <h2>Aufgabe endgültig löschen?</h2>
+        <p class="muted small">Die Aufgabe verschwindet mit allen Kommentaren und dem Verlauf, das lässt sich nicht rückgängig machen.
+            Soll sie nur vom Board, reicht „Verworfen“.</p>
+        <form method="post" action="<?= e(url('aufgaben/aufgabe')) ?>" class="btn-row">
+            <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int) $task['id'] ?>"><input type="hidden" name="action" value="delete">
+            <button class="btn btn-primary" type="submit">Endgültig löschen</button>
+            <a class="btn btn-ghost" href="<?= e(url('aufgaben/aufgabe?id=' . (int) $task['id'])) ?>">Abbrechen</a>
+        </form>
+    </section>
+<?php endif; ?>
 
 <div class="grid-2">
     <section class="card">
@@ -117,4 +131,8 @@ $closed = in_array($task['status'], ['done', 'dropped'], true);
             <?php require __DIR__ . '/task_form.php'; ?>
         </details>
     </section>
+<?php endif; ?>
+
+<?php if ($canDelete && !$confirmDelete): ?>
+    <p class="muted small"><a href="<?= e(url('aufgaben/aufgabe?id=' . (int) $task['id'] . '&loeschen=1#loeschen')) ?>">Aufgabe löschen …</a></p>
 <?php endif; ?>
