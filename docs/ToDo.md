@@ -81,6 +81,7 @@ Seite `/lohnauftraege`, eigenes Recht *Lohnaufträge verwalten*.
 - [x] Auftraggeber (Hof oder extern), Leistung, Feld, vereinbarter Preis, Fälligkeit, Status (angefragt, angenommen, erledigt, storniert)
 - [x] erzeugt eine oder mehrere **Aufgaben**; sind alle erledigt, ist der Auftrag erledigt
 - [x] erzeugt nach Abschluss einen **Buchungsvorschlag** (Einnahme, beim Hof-Auftraggeber zusätzlich Ausgabe)
+- [ ] Auftrag als vom KI Helfern abzuarbeiten zuweisen
 - [ ] später Grundlage für die **Rechnung zwischen Höfen** (Phase 3)
 
 ## 4. Fahrzeugverwaltung
