@@ -114,6 +114,7 @@ weil Nitrado Mods nur mit Login im Web-Interface herausgibt (der Durchreich-Weg 
 - [x] Pro Mod: Version aus der `modDesc.xml`, SHA-256, Größe, Hinweis/Changelog; Warnung, wenn der Server eine neuere Version hat
 - [x] Hinweis über der Liste: nur für unsere Runde, nicht weitergeben, Nutzung auf eigene Gefahr
 - [x] Größengrenze pro Datei (`downloads.max_mb` und PHP-Upload-Grenze), Download-Zahlen je Mod
+- [x] **FTP-Eingang (0.14):** große Mods per FTP nach `var/mods-inbox/`, Cron übernimmt passende ZIPs automatisch, Rest unter `/downloads` zuordnen (umgeht die PHP-Upload-Grenze)
 - [ ] Bei fremden Mods vorher die Erlaubnis der Autoren einholen, viele verbieten Re-Uploads
 
 ## 7. Nachrichtenboard ✔

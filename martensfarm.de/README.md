@@ -322,6 +322,27 @@ Nur Dateien hochladen, kein Datenbank-Update.
 - Stornierte Zeilen im Kassenbuch sind weiter blass, ihre Knöpfe aber nicht mehr. Die Rückfrage vor dem Löschen erscheint
   direkt über dem Kassenbuch statt ganz oben auf der Seite.
 
+### Update auf 0.14 (Mods per FTP bereitstellen)
+
+Kein Datenbank-Update nötig. Große Mods scheitern im Browser an der PHP-Upload-Grenze. Dafür gibt es jetzt einen FTP-Eingang:
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. Eingangsordner anlegen: `var/mods-inbox/` neben `var/mods/` (also `…/martensfarm.de/var/mods-inbox/`, Rechte 750).
+   Legt die App beim ersten Aufruf von `/downloads` auch selbst an. Anderer Ort: `downloads.inbox_dir` in `config.php`.
+   Eingang und Ablage am besten auf demselben Dateisystem, dann wird nur umbenannt statt kopiert.
+3. Optional in KeyHelp einen **eigenen FTP-Zugang** anlegen, der nur auf diesen Ordner zeigt. Dann braucht der Mod-Upload
+   kein Konto mit Zugriff auf die ganze App. Die Dateien gehören so demselben Benutzer wie PHP, das Verschieben klappt.
+
+So funktioniert's:
+- ZIP per FTP (z. B. FileZilla, Binärmodus) in den Eingang legen. Heißt sie genau wie die Mod (`FS25_Irgendwas.zip`,
+  Groß/klein egal), übernimmt der Cron (`cron/import.php`, alle 5 Minuten) sie automatisch nach `var/mods/`:
+  modDesc.xml prüfen, Version, SHA-256 und Größe merken, Datei aus dem Eingang entfernen. Läuft unabhängig davon, ob der Gameserver erreichbar ist.
+- Übernommen wird erst, wenn die Datei 2 Minuten nicht mehr geändert wurde, halbe Uploads bleiben also liegen.
+- Alles, was nicht eindeutig passt (z. B. `FS25_Irgendwas (1).zip`, `FS25_Irgendwas_v1.2.zip`), fehlerhafte ZIPs und Dateien
+  zu Mods, die noch nicht in der Server-Liste stehen, zeigt `/downloads` → **Per FTP bereitgestellt**. Dort Mod wählen und
+  „Übernehmen“ oder „Löschen“ (Recht *Downloads verwalten*).
+- Automatik abschalten: `downloads.inbox_auto => false` in `config.php`. Die Grenze `downloads.max_mb` gilt auch für den Eingang.
+
 ---
 
 ## Nächste Phasen

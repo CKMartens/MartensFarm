@@ -107,7 +107,7 @@ function mod_store_upload(array $mod, array $upload, array $user): string
 {
     $err = (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE);
     if ($err === UPLOAD_ERR_INI_SIZE || $err === UPLOAD_ERR_FORM_SIZE) {
-        throw new RuntimeException('Die Datei ist zu groß (Grenze ' . fmt_num(mods_upload_limit() / 1048576) . ' MB).');
+        throw new RuntimeException('Die Datei ist zu groß (Grenze ' . fmt_num(mods_upload_limit() / 1048576) . ' MB). Große Mods besser per FTP in den Eingang legen.');
     }
     if ($err !== UPLOAD_ERR_OK || !is_uploaded_file((string) ($upload['tmp_name'] ?? ''))) {
         throw new RuntimeException('Es kam keine Datei an.');
@@ -122,26 +122,167 @@ function mod_store_upload(array $mod, array $upload, array $user): string
     if ($orig !== '' && strcasecmp($orig, $name) !== 0 && !isset($upload['force'])) {
         throw new RuntimeException('Die Datei heißt „' . $orig . '.zip“, erwartet ist „' . $name . '.zip“. Falsche Mod erwischt?');
     }
-    $info = mod_inspect_zip($tmp);
-    $sha = hash_file('sha256', $tmp);
+    return mod_store_file($mod, $tmp, (int) $user['id'], 'hochgeladen', fn(string $from, string $to): bool => move_uploaded_file($from, $to));
+}
+
+/**
+ * Gemeinsamer Teil von Upload und FTP-Eingang: ZIP prüfen, nach var/mods/ verschieben, in server_mods eintragen.
+ * $move verschiebt die Quelldatei an den Zielpfad (move_uploaded_file bzw. rename).
+ */
+function mod_store_file(array $mod, string $source, ?int $userId, string $verb, callable $move): string
+{
+    $name = (string) $mod['mod_name'];
+    $size = (int) filesize($source);
+    $info = mod_inspect_zip($source);
+    $sha = hash_file('sha256', $source);
 
     $target = mod_file_path($name);
     $part = $target . '.part';
-    if (!move_uploaded_file($tmp, $part) || !@rename($part, $target)) {
+    if (!$move($source, $part) || !@rename($part, $target)) {
         @unlink($part);
         throw new RuntimeException('Die Datei ließ sich nicht speichern (Rechte auf var/mods/ prüfen).');
     }
     @chmod($target, 0640);
 
     q('UPDATE server_mods SET file_version = ?, file_sha256 = ?, file_size = ?, file_uploaded_at = ?, file_uploaded_by = ? WHERE mod_name = ?',
-        [$info['version'], $sha, $size, now(), (int) $user['id'], $name]);
+        [$info['version'], $sha, $size, now(), $userId, $name]);
 
-    $msg = $name . '.zip hochgeladen (' . fmt_num($size / 1048576, 1) . ' MB';
+    $msg = $name . '.zip ' . $verb . ' (' . fmt_num($size / 1048576, 1) . ' MB';
     $msg .= $info['version'] ? ', Version ' . $info['version'] . ')' : ', Version unbekannt)';
     if ($info['version'] && $mod['version'] && mod_version_norm($info['version']) !== mod_version_norm((string) $mod['version'])) {
         return $msg . '. Achtung: Auf dem Server läuft Version ' . $mod['version'] . '.';
     }
     return $msg . '.';
+}
+
+/*
+ * FTP-Eingang: große Mods per FTP in var/mods-inbox/ legen (eigener FTP-Zugang in KeyHelp, nur auf diesen Ordner).
+ * So greift die PHP-Upload-Grenze nicht. Die App zeigt die Dateien unter /downloads an, der Cron übernimmt
+ * passende ZIPs automatisch.
+ */
+
+/** Eingangsordner für FTP-Uploads (außerhalb von public/). Standard: var/mods-inbox/ */
+function mods_inbox_dir(): string
+{
+    $dir = rtrim((string) config('downloads.inbox_dir', APP_ROOT . '/var/mods-inbox'), '/');
+    if (!is_dir($dir) && !@mkdir($dir, 0750, true) && !is_dir($dir)) {
+        throw new RuntimeException('Eingangsordner für Mods lässt sich nicht anlegen.');
+    }
+    return $dir;
+}
+
+/** Erst übernehmen, wenn sich die Datei so lange nicht mehr geändert hat (FTP-Upload fertig) */
+const MODS_INBOX_SETTLE_S = 120;
+
+/**
+ * Inhalt des Eingangs: eine Zeile pro ZIP mit Zuordnung zur Mod aus der Server-Liste.
+ * Zugeordnet wird über den Dateinamen (FS25_Irgendwas.zip, Groß/klein egal). Kopien wie
+ * „FS25_Irgendwas (1).zip“ oder „FS25_Irgendwas_v1.2.zip“ schlägt die App nur vor, der Verwalter bestätigt.
+ */
+function mods_inbox_list(): array
+{
+    $dir = mods_inbox_dir();
+    $byLower = [];
+    foreach (q('SELECT mod_name, title, version, on_server, file_sha256 FROM server_mods')->fetchAll() as $m) {
+        $byLower[strtolower((string) $m['mod_name'])] = $m;
+    }
+    $out = [];
+    foreach ((array) scandir($dir) as $f) {
+        $path = $dir . '/' . $f;
+        if (!is_string($f) || $f[0] === '.' || !is_file($path) || is_link($path) || strtolower(pathinfo($f, PATHINFO_EXTENSION)) !== 'zip') {
+            continue;
+        }
+        $base = pathinfo($f, PATHINFO_FILENAME);
+        $exact = $byLower[strtolower($base)] ?? null;
+        $guess = null;
+        if ($exact === null) {
+            $stripped = strtolower((string) preg_replace('/(\s*\(\d+\)|[_\- ]v?\d+(\.\d+)+)$/i', '', $base));
+            $guess = $byLower[$stripped] ?? null;
+        }
+        clearstatcache(true, $path);
+        $mtime = (int) filemtime($path);
+        $out[] = [
+            'file'  => $f,
+            'path'  => $path,
+            'size'  => (int) filesize($path),
+            'mtime' => $mtime,
+            'ready' => $mtime <= time() - MODS_INBOX_SETTLE_S,
+            'mod'   => $exact,
+            'guess' => $guess,
+        ];
+    }
+    usort($out, fn($a, $b) => strcasecmp($a['file'], $b['file']));
+    return $out;
+}
+
+/** Einen Dateinamen aus dem Eingang sicher auflösen (kein ../, nur ZIPs direkt im Ordner) */
+function mods_inbox_path(string $file): ?string
+{
+    if ($file === '' || $file !== basename($file) || $file[0] === '.' || strtolower(pathinfo($file, PATHINFO_EXTENSION)) !== 'zip') {
+        return null;
+    }
+    $path = mods_inbox_dir() . '/' . $file;
+    return is_file($path) && !is_link($path) ? $path : null;
+}
+
+/** Eine Datei aus dem Eingang einer Mod zuordnen und übernehmen. Gibt eine Meldung zurück oder wirft. */
+function mod_take_from_inbox(array $mod, string $path, ?int $userId): string
+{
+    clearstatcache(true, $path);
+    if ((int) filemtime($path) > time() - MODS_INBOX_SETTLE_S) {
+        throw new RuntimeException(basename($path) . ' wird gerade noch geändert (läuft der FTP-Upload noch?). In zwei Minuten nochmal.');
+    }
+    $size = (int) filesize($path);
+    if ($size <= 0 || $size > (int) config('downloads.max_mb', 1024) * 1048576) {
+        throw new RuntimeException(basename($path) . ' ist leer oder größer als downloads.max_mb.');
+    }
+    $move = function (string $from, string $to): bool {
+        if (@rename($from, $to)) {
+            return true;
+        }
+        // Eingang und Ablage auf verschiedenen Dateisystemen: kopieren, dann löschen
+        return @copy($from, $to) && @unlink($from);
+    };
+    return mod_store_file($mod, $path, $userId, 'aus dem FTP-Eingang übernommen', $move);
+}
+
+function mod_inbox_delete(string $path): void
+{
+    if (!@unlink($path)) {
+        throw new RuntimeException(basename($path) . ' ließ sich nicht löschen (Rechte prüfen).');
+    }
+}
+
+/**
+ * Für den Cron: alle fertigen ZIPs mit eindeutigem Namen übernehmen. Unklare oder kaputte bleiben liegen
+ * und erscheinen unter /downloads. Gibt Log-Zeilen zurück. Abschaltbar mit downloads.inbox_auto = false.
+ */
+function mods_inbox_auto_import(): array
+{
+    if (!config('downloads.inbox_auto', true)) {
+        return [];
+    }
+    $log = [];
+    $seen = array_filter(explode(',', (string) setting_get('mods_inbox_failed', '')));
+    $failed = [];
+    foreach (mods_inbox_list() as $f) {
+        if ($f['mod'] === null || !$f['ready']) {
+            continue;
+        }
+        $mod = q('SELECT * FROM server_mods WHERE mod_name = ?', [$f['mod']['mod_name']])->fetch();
+        try {
+            $log[] = 'Downloads: ' . mod_take_from_inbox($mod, $f['path'], null);
+        } catch (RuntimeException $e) {
+            // bleibt im Eingang, der Verwalter sieht den Fehler unter /downloads. Pro Datei-Stand nur einmal loggen.
+            $key = sha1($f['file'] . ':' . $f['mtime'] . ':' . $f['size']);
+            if (!in_array($key, $seen, true)) {
+                $log[] = 'Downloads: ' . $f['file'] . ' nicht übernommen: ' . $e->getMessage();
+            }
+            $failed[] = $key;
+        }
+    }
+    setting_set('mods_inbox_failed', $failed ? implode(',', array_slice($failed, 0, 50)) : null);
+    return $log;
 }
 
 function mod_delete_file(string $modName): void
