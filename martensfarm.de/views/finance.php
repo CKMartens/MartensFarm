@@ -51,46 +51,6 @@ $monthStatus = [
     <div class="alert alert-warning">Der Spieltag ist noch unbekannt. Er kommt mit dem nächsten Save, dafür muss die Export-Mod ab Version 0.3 laufen.</div>
 <?php endif; ?>
 
-<?php if ($confirmDeleteCancelled): ?>
-    <section class="card" id="loeschen">
-        <h2><?= (int) $cancelledDeletable ?> stornierte Buchung(en) endgültig löschen?</h2>
-        <p class="muted small">Sie verschwinden aus dem Kassenbuch. Im Löschprotokoll (unten und unter Verwaltung) bleibt stehen, was es war und wer gelöscht hat.
-            Stornierte in abgeschlossenen Monaten bleiben.</p>
-        <form method="post" action="<?= e(url('finanzen' . $q)) ?>" class="stack">
-            <?= csrf_field() ?>
-            <input type="hidden" name="action" value="delete_cancelled">
-            <label>Grund (optional)
-                <input type="text" name="reason" maxlength="255" placeholder="z. B. Aufräumen">
-            </label>
-            <div class="btn-row">
-                <button class="btn btn-primary" type="submit">Endgültig löschen</button>
-                <a class="btn btn-ghost" href="<?= e(url('finanzen' . $q)) ?>">Abbrechen</a>
-            </div>
-        </form>
-    </section>
-<?php endif; ?>
-
-<?php if ($confirmDelete): $cd = $confirmDelete; ?>
-    <section class="card" id="loeschen">
-        <h2>Buchung endgültig löschen?</h2>
-        <p>Tag <?= (int) $cd['game_day'] ?> · <?= e($cats[(int) $cd['category_id']]['name'] ?? '?') ?> · <strong><?= e($sign((int) $cd['amount'])) ?></strong>
-            <?= $cd['text'] !== '' ? '· ' . e($cd['text']) : '' ?></p>
-        <p class="muted small">Weg ist weg: Die Buchung verschwindet aus Kassenbuch und Abgleich. Im Löschprotokoll unten bleibt stehen, was es war und wer sie gelöscht hat.
-            Für normale Fehlbuchungen reicht meist „Stornieren“.</p>
-        <form method="post" action="<?= e(url('finanzen' . $q)) ?>" class="stack">
-            <?= csrf_field() ?>
-            <input type="hidden" name="action" value="delete">
-            <input type="hidden" name="id" value="<?= (int) $cd['id'] ?>">
-            <label>Grund (optional)
-                <input type="text" name="reason" maxlength="255" placeholder="z. B. doppelt erfasst, Tippfehler">
-            </label>
-            <div class="btn-row">
-                <button class="btn btn-primary" type="submit">Endgültig löschen</button>
-                <a class="btn btn-ghost" href="<?= e(url('finanzen' . $q)) ?>">Abbrechen</a>
-            </div>
-        </form>
-    </section>
-<?php endif; ?>
 
 <section class="tiles">
     <div class="tile">
@@ -285,6 +245,47 @@ $monthStatus = [
             <a class="btn btn-ghost btn-sm" href="<?= e(url('finanzen' . $q . '&stornierte_loeschen=1#loeschen')) ?>">Stornierte löschen (<?= (int) $cancelledDeletable ?>)</a>
         <?php endif; ?>
     </div>
+
+<?php if ($confirmDeleteCancelled): ?>
+    <div class="confirm-box" id="loeschen">
+        <h3><?= (int) $cancelledDeletable ?> stornierte Buchung(en) endgültig löschen?</h3>
+        <p class="muted small">Sie verschwinden aus dem Kassenbuch. Im Löschprotokoll (unten und unter Verwaltung) bleibt stehen, was es war und wer gelöscht hat.
+            Stornierte in abgeschlossenen Monaten bleiben.</p>
+        <form method="post" action="<?= e(url('finanzen' . $q)) ?>" class="stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="delete_cancelled">
+            <label>Grund (optional)
+                <input type="text" name="reason" maxlength="255" placeholder="z. B. Aufräumen">
+            </label>
+            <div class="btn-row">
+                <button class="btn btn-primary" type="submit">Endgültig löschen</button>
+                <a class="btn btn-ghost" href="<?= e(url('finanzen' . $q)) ?>">Abbrechen</a>
+            </div>
+        </form>
+    </div>
+<?php endif; ?>
+
+<?php if ($confirmDelete): $cd = $confirmDelete; ?>
+    <div class="confirm-box" id="loeschen">
+        <h3>Buchung endgültig löschen?</h3>
+        <p>Tag <?= (int) $cd['game_day'] ?> · <?= e($cats[(int) $cd['category_id']]['name'] ?? '?') ?> · <strong><?= e($sign((int) $cd['amount'])) ?></strong>
+            <?= $cd['text'] !== '' ? '· ' . e($cd['text']) : '' ?></p>
+        <p class="muted small">Weg ist weg: Die Buchung verschwindet aus Kassenbuch und Abgleich. Im Löschprotokoll unten bleibt stehen, was es war und wer sie gelöscht hat.
+            Für normale Fehlbuchungen reicht meist „Stornieren“.</p>
+        <form method="post" action="<?= e(url('finanzen' . $q)) ?>" class="stack">
+            <?= csrf_field() ?>
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="<?= (int) $cd['id'] ?>">
+            <label>Grund (optional)
+                <input type="text" name="reason" maxlength="255" placeholder="z. B. doppelt erfasst, Tippfehler">
+            </label>
+            <div class="btn-row">
+                <button class="btn btn-primary" type="submit">Endgültig löschen</button>
+                <a class="btn btn-ghost" href="<?= e(url('finanzen' . $q)) ?>">Abbrechen</a>
+            </div>
+        </form>
+    </div>
+<?php endif; ?>
     <?php if ($bookings): ?>
         <div class="table-wrap">
         <table class="table compact">
