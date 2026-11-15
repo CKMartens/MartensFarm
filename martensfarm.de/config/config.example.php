@@ -55,5 +55,9 @@ return [
         'max_mb' => 1024,
         // Ablage der hochgeladenen ZIPs, außerhalb von public/. Standard: var/mods/
         // 'dir' => '/home/users/BENUTZER/martensfarm-mods',
+        // FTP-Eingang für große Mods (umgeht die PHP-Upload-Grenze). Standard: var/mods-inbox/
+        // 'inbox_dir' => '/home/users/BENUTZER/martensfarm-mods-inbox',
+        // ZIPs mit passendem Namen übernimmt cron/import.php automatisch; false = nur von Hand unter /downloads
+        'inbox_auto' => true,
     ],
 ];

@@ -16,13 +16,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         render('error', ['title' => 'Kein Zugriff', 'message' => 'Dafür fehlt dir die Berechtigung.']);
         exit;
     }
+    $action = (string) ($_POST['action'] ?? '');
+    // FTP-Eingang: Datei übernehmen oder löschen
+    if (str_starts_with($action, 'inbox_')) {
+        try {
+            $path = mods_inbox_path((string) ($_POST['file'] ?? ''));
+            if ($path === null) {
+                throw new RuntimeException('Diese Datei liegt nicht (mehr) im Eingang.');
+            }
+            if ($action === 'inbox_delete') {
+                mod_inbox_delete($path);
+                flash('success', basename($path) . ' aus dem Eingang gelöscht.');
+            } elseif ($action === 'inbox_take') {
+                $target = (string) ($_POST['mod'] ?? '');
+                $mod = mod_name_valid($target) ? (q('SELECT * FROM server_mods WHERE mod_name = ?', [$target])->fetch() ?: null) : null;
+                if ($mod === null) {
+                    throw new RuntimeException('Bitte eine Mod aus der Liste auswählen.');
+                }
+                flash('success', mod_take_from_inbox($mod, $path, (int) $user['id']));
+            }
+        } catch (RuntimeException $e) {
+            flash('error', $e->getMessage());
+        }
+        redirect('downloads');
+    }
     $name = (string) ($_POST['mod'] ?? '');
     $mod = mod_name_valid($name) ? (q('SELECT * FROM server_mods WHERE mod_name = ?', [$name])->fetch() ?: null) : null;
     if ($mod === null) {
         flash('error', 'Diese Mod gibt es nicht.');
         redirect('downloads');
     }
-    $action = (string) ($_POST['action'] ?? '');
     try {
         if ($action === 'upload') {
             $upload = (array) ($_FILES['file'] ?? []);
@@ -62,4 +85,29 @@ foreach ($all as $m) {
 }
 $limitMb = mods_upload_limit() / 1048576;
 
-render('downloads', compact('user', 'mods', 'rest', 'canManage', 'limitMb') + ['title' => 'Downloads', 'nav' => 'downloads']);
+// FTP-Eingang nur für Verwalter: was liegt dort, passt es zu einer Mod, ist die ZIP in Ordnung?
+$inbox = [];
+$inboxError = null;
+$modChoices = [];
+if ($canManage) {
+    try {
+        $inbox = mods_inbox_list();
+        foreach ($inbox as &$f) {
+            $f['problem'] = null;
+            $f['zip'] = null;
+            if ($f['ready']) {
+                try {
+                    $f['zip'] = mod_inspect_zip($f['path']);
+                } catch (RuntimeException $e) {
+                    $f['problem'] = $e->getMessage();
+                }
+            }
+        }
+        unset($f);
+    } catch (RuntimeException $e) {
+        $inboxError = $e->getMessage();
+    }
+    $modChoices = q('SELECT mod_name, title, on_server FROM server_mods ORDER BY on_server DESC, COALESCE(title, mod_name)')->fetchAll();
+}
+
+render('downloads', compact('user', 'mods', 'rest', 'canManage', 'limitMb', 'inbox', 'inboxError', 'modChoices') + ['title' => 'Downloads', 'nav' => 'downloads']);

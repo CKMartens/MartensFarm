@@ -1,5 +1,5 @@
 <?php
-/** @var array $mods @var array $rest @var bool $canManage @var float $limitMb */
+/** @var array $mods @var array $rest @var bool $canManage @var float $limitMb @var array $inbox @var ?string $inboxError @var array $modChoices */
 $stateBadge = [
     'ok'       => '',
     'outdated' => ' <span class="badge warn">Server hat neuere Version</span>',
@@ -103,10 +103,71 @@ $uploadForm = function (array $m, string $label) use ($limitMb): void { ?>
 </section>
 
 <?php if ($canManage): ?>
+    <section class="card" id="ftp-eingang">
+        <h2>Per FTP bereitgestellt</h2>
+        <p class="muted small">Große Mods nicht über den Browser hochladen, sondern per FTP in den Eingangsordner
+            <?= config('downloads.inbox_dir') ? '(eingestellt in <code>downloads.inbox_dir</code>)' : '<code>var/mods-inbox/</code>' ?> legen. Heißt die ZIP genau wie die Mod
+            (z. B. <code>FS25_Irgendwas.zip</code>), übernimmt der Cron sie innerhalb von 5 Minuten automatisch<?= config('downloads.inbox_auto', true) ? '' : ' (zurzeit abgeschaltet: downloads.inbox_auto)' ?>.
+            Alles andere hier zuordnen und übernehmen. Die PHP-Upload-Grenze gilt dabei nicht.</p>
+        <?php if ($inboxError): ?>
+            <div class="alert alert-error"><?= e($inboxError) ?></div>
+        <?php else: ?>
+            <table class="table compact">
+                <thead><tr><th>Datei</th><th class="num">Größe</th><th>Inhalt</th><th>Übernehmen als</th><th></th></tr></thead>
+                <tbody>
+                <?php foreach ($inbox as $f):
+                    $pre = $f['mod']['mod_name'] ?? ($f['guess']['mod_name'] ?? ''); ?>
+                    <tr>
+                        <td><code><?= e($f['file']) ?></code>
+                            <div class="muted small">geändert <?= e(date('d.m.Y H:i', $f['mtime'])) ?></div></td>
+                        <td class="num"><?= e(fmt_num($f['size'] / 1048576, 1)) ?> MB</td>
+                        <td>
+                            <?php if (!$f['ready']): ?>
+                                <span class="badge warn">wird noch hochgeladen?</span>
+                            <?php elseif ($f['problem']): ?>
+                                <span class="badge bad">fehlerhaft</span><div class="small"><?= e($f['problem']) ?></div>
+                            <?php else: ?>
+                                <?= e($f['zip']['title'] ?? '–') ?><div class="muted small">Version <?= e($f['zip']['version'] ?? 'unbekannt') ?></div>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <form method="post" action="<?= e(url('downloads')) ?>" class="btn-row">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="inbox_take">
+                                <input type="hidden" name="file" value="<?= e($f['file']) ?>">
+                                <select name="mod" required aria-label="Mod für <?= e($f['file']) ?>">
+                                    <option value="">– Mod wählen –</option>
+                                    <?php foreach ($modChoices as $c): ?>
+                                        <option value="<?= e($c['mod_name']) ?>"<?= strcasecmp($pre, (string) $c['mod_name']) === 0 ? ' selected' : '' ?>>
+                                            <?= e(($c['title'] ?: $c['mod_name']) . ' (' . $c['mod_name'] . ')' . ((int) $c['on_server'] === 1 ? '' : ' – nicht auf dem Server')) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <button class="btn btn-primary" type="submit"<?= $f['ready'] && !$f['problem'] ? '' : ' disabled' ?>>Übernehmen</button>
+                            </form>
+                            <?php if ($f['mod'] === null && $f['guess'] !== null): ?><div class="muted small">Vorschlag nach Dateinamen, bitte prüfen.</div><?php endif; ?>
+                            <?php if ($f['mod'] === null && $f['guess'] === null): ?><div class="muted small">Name passt zu keiner Mod aus der Server-Liste.</div><?php endif; ?>
+                        </td>
+                        <td class="num">
+                            <form method="post" action="<?= e(url('downloads')) ?>">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="action" value="inbox_delete">
+                                <input type="hidden" name="file" value="<?= e($f['file']) ?>">
+                                <button class="btn btn-ghost" type="submit">Löschen</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if (!$inbox): ?><tr><td colspan="5" class="muted">Der Eingang ist leer.</td></tr><?php endif; ?>
+                </tbody>
+            </table>
+        <?php endif; ?>
+    </section>
+
     <section class="card">
         <h2>Weitere Mods auf dem Server</h2>
         <p class="muted small">Die meldet der Server im Stats-Feed, es gibt aber noch keine Datei. ModHub-Mods einfach so lassen, die sehen die Mitspieler nicht.
-            Für alle anderen die ZIP hochladen (bis <?= e(fmt_num($limitMb)) ?> MB). Die App prüft die modDesc.xml und merkt sich Version und SHA-256.</p>
+            Für alle anderen die ZIP hochladen (bis <?= e(fmt_num($limitMb)) ?> MB, größere per FTP, siehe oben). Die App prüft die modDesc.xml und merkt sich Version und SHA-256.</p>
         <table class="table compact">
             <thead><tr><th>Mod</th><th>Version</th><th>Autor</th><th>ZIP hochladen</th></tr></thead>
             <tbody>

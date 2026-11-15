@@ -27,7 +27,17 @@ try {
     }
 } catch (Throwable $e) {
     fwrite(STDERR, 'Import-Fehler: ' . $e->getMessage() . PHP_EOL);
-    exit(1);
-} finally {
-    flock($lock, LOCK_UN);
+    $failed = true;
 }
+
+// Mods aus dem FTP-Eingang (var/mods-inbox/) übernehmen, unabhängig davon, ob der Gameserver erreichbar war
+try {
+    foreach (mods_inbox_auto_import() as $line) {
+        echo date('Y-m-d H:i:s') . ' ' . $line . PHP_EOL;
+    }
+} catch (Throwable $e) {
+    fwrite(STDERR, 'FTP-Eingang: ' . $e->getMessage() . PHP_EOL);
+}
+
+flock($lock, LOCK_UN);
+exit(isset($failed) ? 1 : 0);
