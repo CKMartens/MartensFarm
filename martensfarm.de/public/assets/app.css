@@ -246,3 +246,17 @@ details summary h2 { display: inline; }
     .board-col { scroll-snap-align: start; }
 }
 h2.spaced { margin-top: 1.2rem; }
+
+/* Fuhrpark: Filter und Karte */
+.filter-bar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.filter-bar input, .filter-bar select { width: auto; margin-top: 0; }
+.filter-bar input[type=search] { min-width: 10rem; flex: 1 1 12rem; }
+.filter-bar select { flex: 0 1 auto; max-width: 100%; }
+.fleet-map { display: block; width: 100%; max-width: 640px; height: auto; aspect-ratio: 1; border-radius: var(--radius); border: 1px solid var(--line); background: var(--line); margin-top: .6rem; }
+.fleet-map .map-dot { fill: var(--muted); stroke: #0d1117; stroke-width: 3; }
+.fleet-map .map-dot.ok { fill: var(--ok); }
+.fleet-map .map-dot.warn { fill: var(--warn); }
+.fleet-map .map-dot.bad { fill: var(--bad); }
+.fleet-map a:hover .map-dot { stroke: var(--text); }
+.fleet-map .map-ring { fill: none; stroke: var(--text); stroke-width: 4; opacity: .8; }
+p.spaced { margin-top: 1.2rem; }

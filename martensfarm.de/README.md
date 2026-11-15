@@ -7,7 +7,7 @@ Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im 
 - Anmeldung ohne Passwort: Link plus 6-stelliger Code per E-Mail
 - Nutzerverwaltung mit Hofzuordnung, Rollen (Admin, Farmmanager, Spieler, Gast) und frei einstellbaren Rechten
 - Dashboard: Server online, Spieler, Uhrzeit im Spiel, Kontostand mit Verlauf, fällige Reparaturen, Verkaufstipps
-- Fuhrpark mit Schaden, Stunden, Füllständen und Verkaufshistorie
+- Fuhrpark mit Schaden, Stunden, Füllständen und Verkaufshistorie, Filter, Karte und Detailseite mit Kosten je Fahrzeug (ab 0.10)
 - Preise vom Server mit bestem und schlechtestem Monat
 - Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4), Monatsabschluss mit Korrekturbuchung und Löschen (ab 0.8)
 - Downloads: Mods, die nicht im ModHub sind, für die Mitspieler; Server-Liste automatisch aus dem Stats-Feed (ab 0.6)
@@ -278,6 +278,19 @@ So funktioniert's:
   (Spielkalender aus der Export-Mod). Verworfene bleiben, ebenso Aufgaben offener Lohnaufträge. Buchungsvorschläge hängen
   am Lohnauftrag, nicht an der Aufgabe, und bleiben deshalb erhalten. Abschaltbar unter **Einstellungen → Aufgaben**.
 - Aufgaben, die schon vor dem Update erledigt waren, bekommen beim ersten Import den aktuellen Spieltag und gehen im nächsten Spielmonat.
+
+### Update auf 0.10 (Fuhrpark)
+
+Nur Dateien hochladen, kein Datenbank-Update nötig (neu sind u. a. `src/fleet.php`, `src/pages/vehicle.php`, `views/vehicle.php`).
+
+So funktioniert's:
+- **Filter** auf `/fuhrpark`: Name, Gruppe, Eigentum/geleast/Auftrag, „nur Werkstatt fällig“. Alles per Link teilbar.
+- **Karte** (aufklappbar): jedes Fahrzeug als Punkt auf dem Kartenbild, Farbe nach Schaden, Klick öffnet das Fahrzeug.
+  Die Position kommt aus `vehicles.xml`, also mit dem Save. Die Kartengröße liest die App aus dem Stats-Feed (`mapSize`, sonst 2048 m).
+- **Detailseite** je Fahrzeug (`/fuhrpark/fahrzeug?id=…`): Schaden, Stunden, Füllstände, Position, Aufgaben und alle Buchungen
+  mit Bezug auf das Fahrzeug samt Summe. Knöpfe „Kosten buchen“ und „Aufgabe“ belegen Hof und Fahrzeug vor.
+- **Kosten je Fahrzeug:** Beim Buchen lässt sich optional ein Fahrzeug wählen. Kauf- und Verkaufsvorschläge hängen schon dran.
+  Die Spalte „Gebucht“ im Fuhrpark und die Summe auf der Detailseite sieht nur, wer die Finanzen des Hofs sehen darf.
 
 ---
 

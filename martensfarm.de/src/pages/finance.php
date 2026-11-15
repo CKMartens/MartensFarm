@@ -79,8 +79,9 @@ $rec = $sgId ? finance_reconcile($sgId, $farmId) : ['start' => null, 'rows' => [
 $gameOpen = $sgId ? finance_game_open($sgId, $farmId, $rec['start']['day'] ?? null) : [];
 $suggestions = $sgId ? q('SELECT * FROM booking_suggestions WHERE savegame_id = ? AND farm_id = ? AND status = \'open\' ORDER BY detected_at DESC LIMIT 50',
     [$sgId, $farmId])->fetchAll() : [];
-$bookings = $sgId ? q('SELECT b.*, u.nickname, cu.nickname AS cancelled_nick FROM bookings b
+$bookings = $sgId ? q('SELECT b.*, u.nickname, cu.nickname AS cancelled_nick, v.name AS vehicle_name FROM bookings b
                        LEFT JOIN users u ON u.id = b.created_by LEFT JOIN users cu ON cu.id = b.cancelled_by
+                       LEFT JOIN vehicles v ON b.ref_type = \'vehicle\' AND v.unique_id = b.ref_id
                        WHERE b.savegame_id = ? AND b.farm_id = ? ORDER BY b.game_day DESC, b.id DESC LIMIT 200', [$sgId, $farmId])->fetchAll() : [];
 $totals = $sgId ? q('SELECT COALESCE(SUM(GREATEST(amount, 0)), 0) AS income, COALESCE(SUM(LEAST(amount, 0)), 0) AS expense
                      FROM bookings WHERE savegame_id = ? AND farm_id = ? AND cancelled_at IS NULL', [$sgId, $farmId])->fetch()

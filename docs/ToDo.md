@@ -16,7 +16,7 @@ Stand: 15.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | 1 | Grundlagen: Rollen und Rechte, Einstellungen | erledigt (0.3) |
 | 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | erledigt (0.4, Monatsabschluss 0.8) |
 | 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben und Lohnaufträge | erledigt (0.7, Löschen/Aufräumen 0.9) |
-| 4 | Fahrzeugverwaltung erweitern | klein |
+| 4 | Fahrzeugverwaltung erweitern | erledigt (0.10) |
 | 5 | Datenweg erweitern: Export-Mod für Tiere, Lager und Höfe 2–8 | erledigt (0.2) |
 | 6 | Downloadverwaltung | erledigt (0.6) |
 | 7 | Nachrichtenboard: Mod-Wünsche, Adminbenachrichtigungen, Hinweise zu Aufgaben | mittel |
@@ -86,7 +86,10 @@ Seite `/lohnauftraege`, eigenes Recht *Lohnaufträge verwalten*.
 
 Die Anzeige gibt es schon (Fuhrpark mit Schaden, Stunden, Füllständen, Verkaufshistorie).
 
-- [ ] Wünsche konkret sammeln, z. B. Karte mit Positionen, Filter, Kosten pro Fahrzeug (aus Buchungen)
+- [x] Filter: Name, Gruppe, Eigentum/geleast/Auftrag, nur Werkstatt fällig (0.10)
+- [x] Karte mit Positionen (Stand letzter Save), Farbe nach Schaden (0.10)
+- [x] Detailseite je Fahrzeug mit Aufgaben, Buchungen und Kosten (0.10); beim Buchen optional ein Fahrzeug wählbar
+- [ ] Weitere Wünsche sammeln (z. B. Kosten je Betriebsstunde, Wartungsverlauf)
 
 ## 5. Datenweg erweitern ✔
 
@@ -137,5 +140,5 @@ Neue Seite `/nachrichten`. Ein Ort für alles, was nicht direkt eine Aufgabe ode
 ## Später (Phase 3)
 
 - Rechnungen zwischen Höfen (Buchführung, die App bewegt kein Geld im Spiel)
-- Karte mit Fahrzeugpositionen
+- ~~Karte mit Fahrzeugpositionen~~ (kam mit 0.10 im Fuhrpark)
 - Discord-Webhook

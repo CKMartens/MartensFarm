@@ -270,7 +270,7 @@ $monthStatus = [
                 <tr<?= $cancelled ? ' class="inactive"' : '' ?>>
                     <td><?= (int) $b['game_day'] ?></td>
                     <td><?= e($cats[(int) $b['category_id']]['name'] ?? '?') ?><?= $b['source'] === 'game' ? ' <span class="badge">Spiel</span>' : '' ?><?= $b['source'] === 'correction' ? ' <span class="badge">Monatsabschluss</span>' : '' ?><?= $isLocked((int) $b['game_day']) ? ' <span title="Monat abgeschlossen">🔒</span>' : '' ?></td>
-                    <td><?= e($b['text']) ?><?= $cancelled ? '<br><span class="small">storniert von ' . e($b['cancelled_nick'] ?? '?') . ', ' . e(fmt_datetime($b['cancelled_at'])) . '</span>' : '' ?></td>
+                    <td><?= e($b['text']) ?><?= $b['vehicle_name'] !== null ? ' <a class="small" href="' . e(url('fuhrpark/fahrzeug?id=' . rawurlencode((string) $b['ref_id']))) . '">🚜 ' . e($b['vehicle_name']) . '</a>' : '' ?><?= $cancelled ? '<br><span class="small">storniert von ' . e($b['cancelled_nick'] ?? '?') . ', ' . e(fmt_datetime($b['cancelled_at'])) . '</span>' : '' ?></td>
                     <td class="num <?= $cancelled ? '' : $cls((int) $b['amount']) ?>"><?= e($sign((int) $b['amount'])) ?></td>
                     <td><?= e($b['nickname'] ?? '–') ?><br><span class="muted small"><?= e(fmt_datetime($b['created_at'])) ?></span></td>
                     <td class="actions">

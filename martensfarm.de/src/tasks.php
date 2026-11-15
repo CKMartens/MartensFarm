@@ -174,7 +174,7 @@ function task_ref(array $t): ?array
     switch ($t['ref_type']) {
         case 'vehicle':
             $v = q('SELECT name, farm_id FROM vehicles WHERE unique_id = ?', [$t['ref_id']])->fetch();
-            return ['Fahrzeug', $v['name'] ?? 'Fahrzeug', $v ? 'fuhrpark?hof=' . (int) $v['farm_id'] : null];
+            return ['Fahrzeug', $v['name'] ?? 'Fahrzeug', $v ? 'fuhrpark/fahrzeug?id=' . rawurlencode((string) $t['ref_id']) : null];
         case 'pen':
             $p = q('SELECT name, farm_id FROM husbandries WHERE savegame_id <=> ? AND pen_key = ?', [$sg, $t['ref_id']])->fetch();
             return ['Stall', $p['name'] ?? 'Stall', $p ? 'tiere?hof=' . (int) $p['farm_id'] : null];

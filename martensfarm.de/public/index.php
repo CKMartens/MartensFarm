@@ -72,6 +72,11 @@ try {
             require APP_ROOT . '/src/pages/fleet.php';
             break;
 
+        case 'GET fuhrpark/fahrzeug':
+            $user = require_login();
+            require APP_ROOT . '/src/pages/vehicle.php';
+            break;
+
         case 'GET tiere':
             $user = require_login();
             require APP_ROOT . '/src/pages/animals.php';

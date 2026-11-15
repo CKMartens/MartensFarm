@@ -205,6 +205,7 @@ function parse_stats(SimpleXMLElement $x): array
         'farmlands'   => $farmlands,
         'server_name' => html_entity_decode((string) $x['name'], ENT_QUOTES | ENT_HTML5, 'UTF-8'),
         'map_name'    => (string) $x['mapName'],
+        'map_size'    => isset($x['mapSize']) ? (int) $x['mapSize'] : null,
         'version'     => (string) $x['version'],
         'day_time'    => isset($x['dayTime']) ? (int) $x['dayTime'] : null,
         'capacity'    => isset($x->Slots['capacity']) ? (int) $x->Slots['capacity'] : null,
@@ -331,6 +332,9 @@ function run_import(bool $force = false): array
     }
     $log[] = 'Server: ' . $stats['server_name'] . ', ' . count($stats['players']) . ' Spieler online.';
     advance_calendar($stats['day_time']);
+    if ($stats['map_size'] !== null && $stats['map_size'] >= 256) {
+        setting_set('map_size_m', (string) $stats['map_size']);   // für die Fahrzeugkarte im Fuhrpark
+    }
     if ($stats['mods']) {
         sync_server_mods($stats['mods'], $now);
     }
