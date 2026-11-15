@@ -1,6 +1,6 @@
 # ToDo / Roadmap
 
-Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten Entscheidungen.
+Stand: 15.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten Entscheidungen.
 
 **Rahmen für alles:**
 - Server steht im Hetzner-Netz: keine offenen Formulare, Rate-Limits, schonende Abrufe
@@ -14,12 +14,12 @@ Stand: 14.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | # | Paket | Umfang |
 | --- | --- | --- |
 | 1 | Grundlagen: Rollen und Rechte, Einstellungen | erledigt (0.3) |
-| 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | erledigt (0.4) |
-| 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben und Lohnaufträge | erledigt (0.7) |
-| 4 | Fahrzeugverwaltung erweitern | klein |
+| 2 | Finanzen: Buchungen und Abgleich mit dem Kontostand | erledigt (0.4, Monatsabschluss 0.8) |
+| 3 | Aufgaben-Board inkl. automatischer Werkstatt-Aufgaben und Lohnaufträge | erledigt (0.7, Löschen/Aufräumen 0.9) |
+| 4 | Fahrzeugverwaltung erweitern | erledigt (0.10) |
 | 5 | Datenweg erweitern: Export-Mod für Tiere, Lager und Höfe 2–8 | erledigt (0.2) |
 | 6 | Downloadverwaltung | erledigt (0.6) |
-| 7 | Nachrichtenboard: Mod-Wünsche, Adminbenachrichtigungen, Hinweise zu Aufgaben | mittel |
+| 7 | Nachrichtenboard: Mod-Wünsche, Adminbenachrichtigungen, Hinweise zu Aufgaben | erledigt (0.11) |
 
 ---
 
@@ -54,8 +54,10 @@ Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert
   - Farmland-Besitzer wechselt in `stats.xml` → Landkauf/-verkauf
   - [x] Lohnauftrag erledigt → Einnahme (und Ausgabe beim Auftraggeber, wenn es ein Hof im Spiel ist)
 - [ ] Im echten Spiel prüfen: Kommen die Arten so an, wie erwartet (`bin/check-mod-export.php`, Abschnitt Finanzen)? Passt die Summe zur Kontostandsänderung?
-- [ ] **Korrekturbuchung zum Monatsende** (vorgemerkt): Bleibt am Monatsende eine Differenz zum Kontostand, die sich nicht zuordnen lässt (z. B. Kleinbeträge, „Einkauf, ohne Angabe“), wird sie mit einer Korrekturbuchung ausgeglichen. Danach geht der Abgleich für den Monat auf 0. Offen: eigener Buchungssatz „Korrektur“ oder nur eine eigene Quelle, und ob der Monat danach als abgeschlossen gilt.
-- [ ] **Buchungen löschen** (vorgemerkt): zusätzlich zum Stornieren echtes Löschen, z. B. für Fehleingaben. Nur mit eigenem Recht (z. B. `finance.delete`), mit Rückfrage; offen: ob ein Eintrag im Verlauf bleibt, wer wann was gelöscht hat
+- [x] **Korrekturbuchung zum Monatsende** (0.8): Bleibt am Monatsende eine Differenz zum Kontostand, die sich nicht zuordnen lässt (z. B. Kleinbeträge, „Einkauf, ohne Angabe“), wird sie mit einer Korrekturbuchung ausgeglichen. Danach geht der Abgleich für den Monat auf 0.
+  - Eigener Buchungssatz **Korrektur (Abgleich)**, beim normalen Buchen nicht auswählbar
+  - Der Monat gilt danach als **abgeschlossen**: keine Buchungen, Stornos oder Löschungen mehr für seine Tage. Recht *Monat abschließen* (`finance.close`), wieder öffnen mit *Buchungssätze verwalten* (Korrektur wird storniert)
+- [x] **Buchungen löschen** (0.8): zusätzlich zum Stornieren echtes Löschen, eigenes Recht `finance.delete` (nach dem Update nur Admin), mit Rückfrage und optionalem Grund. Im **Löschprotokoll** bleibt stehen, wer wann was gelöscht hat
 
 ## 3. Aufgaben ✔
 
@@ -69,8 +71,8 @@ Seite `/aufgaben` (0.7). Aufgaben manuell oder automatisch anlegen und an Mitspi
 - [x] Drag & Drop mit externem JS (`assets/tasks.js`), CSP-konform, ohne JS über Knöpfe
 - [x] Einstellungen: Automatik an/aus, ob Spieler selbst abhaken dürfen oder erst „Prüfung“
 - [ ] Im echten Spiel prüfen: Kommen die Auto-Aufgaben zum richtigen Zeitpunkt und schließen sie sich nach dem Save?
-- [ ] **Aufgaben löschen** (vorgemerkt): manuell löschen können (eigenes Recht, z. B. `tasks.delete`, mit Rückfrage), Kommentare und Verlauf gehen mit
-- [ ] **Erledigte automatisch aufräumen** (vorgemerkt): Aufgaben in „Erledigt“ werden im nächsten Ingame-Monat automatisch gelöscht (Spielkalender aus dem Export). Vorher prüfen: Lohnaufträge und Buchungsvorschläge dürfen dadurch keinen Verweis verlieren
+- [x] **Aufgaben löschen** (0.9): eigenes Recht `tasks.delete` (nach dem Update nur Admin), mit Rückfrage, Kommentare und Verlauf gehen mit. Nicht bei Aufgaben eines offenen Lohnauftrags
+- [x] **Erledigte automatisch aufräumen** (0.9): Aufgaben in „Erledigt“ werden im nächsten Ingame-Monat beim Import gelöscht (abschaltbar unter Einstellungen). Lohnaufträge verlieren nichts: Aufgaben offener Aufträge bleiben, Buchungsvorschläge hängen am Auftrag
 
 ### Lohnaufträge ✔
 
@@ -84,7 +86,10 @@ Seite `/lohnauftraege`, eigenes Recht *Lohnaufträge verwalten*.
 
 Die Anzeige gibt es schon (Fuhrpark mit Schaden, Stunden, Füllständen, Verkaufshistorie).
 
-- [ ] Wünsche konkret sammeln, z. B. Karte mit Positionen, Filter, Kosten pro Fahrzeug (aus Buchungen)
+- [x] Filter: Name, Gruppe, Eigentum/geleast/Auftrag, nur Werkstatt fällig (0.10)
+- [x] Karte mit Positionen (Stand letzter Save), Farbe nach Schaden (0.10)
+- [x] Detailseite je Fahrzeug mit Aufgaben, Buchungen und Kosten (0.10); beim Buchen optional ein Fahrzeug wählbar
+- [ ] Weitere Wünsche sammeln (z. B. Kosten je Betriebsstunde, Wartungsverlauf)
 
 ## 5. Datenweg erweitern ✔
 
@@ -109,17 +114,17 @@ weil Nitrado Mods nur mit Login im Web-Interface herausgibt (der Durchreich-Weg 
 - [x] Größengrenze pro Datei (`downloads.max_mb` und PHP-Upload-Grenze), Download-Zahlen je Mod
 - [ ] Bei fremden Mods vorher die Erlaubnis der Autoren einholen, viele verbieten Re-Uploads
 
-## 7. Nachrichtenboard
+## 7. Nachrichtenboard ✔
 
-Neue Seite `/nachrichten`. Ein Ort für alles, was nicht direkt eine Aufgabe oder Buchung ist, damit nichts mehr im Chat untergeht.
+Seite `/nachrichten` (0.11). Ein Ort für alles, was nicht direkt eine Aufgabe oder Buchung ist, damit nichts mehr im Chat untergeht.
 
-- [ ] **Mod-Wünsche:** Spieler schlagen Mods vor (Name, Link zum ModHub oder zur Quelle, Begründung). Status: offen, angenommen, abgelehnt, installiert. Bei „installiert“ Verweis auf den Eintrag in der Downloadverwaltung
-- [ ] **Adminbenachrichtigungen:** Admin bzw. Farmmanager veröffentlichen Hinweise an alle (z. B. Server-Neustart, Mod-Update, Savegame-Wechsel). Optional anheften und mit Ablaufdatum
-- [ ] **Hinweise zu Aufgaben usw.:** Beiträge mit Verknüpfung zu Aufgabe, Lohnauftrag, Fahrzeug, Stall oder Feld; erscheinen auch in deren Detailansicht
-- [ ] Rechte statt Rollen, z. B. `board.post`, `board.announce`, `board.moderate`. Gäste nur lesen
-- [ ] Ungelesen-Zähler und Kachel „Neue Nachrichten“ auf dem Dashboard
-- [ ] Ausblenden statt löschen, der Urheber bleibt erhalten (wie bei Aufgaben und Buchungen)
-- [ ] Schutz wie überall: nur angemeldet, CSRF, Rate-Limit pro Nutzer, Text ohne HTML (Ausgabe escapen)
+- [x] **Mod-Wünsche:** Spieler schlagen Mods vor (Name, Link zum ModHub oder zur Quelle, Begründung). Status: offen, angenommen, abgelehnt, installiert. Bei „installiert“ Verweis auf den Eintrag in der Downloadverwaltung
+- [x] **Adminbenachrichtigungen:** Admin bzw. Farmmanager veröffentlichen Hinweise an alle (z. B. Server-Neustart, Mod-Update, Savegame-Wechsel). Optional anheften und mit Ablaufdatum
+- [x] **Hinweise zu Aufgaben usw.:** Beiträge mit Verknüpfung zu Aufgabe, Lohnauftrag oder Fahrzeug; erscheinen auch in deren Detailansicht (Stall und Feld haben keine eigene Seite, deshalb vorerst nicht)
+- [x] Rechte statt Rollen, z. B. `board.post`, `board.announce`, `board.moderate`. Gäste nur lesen
+- [x] Ungelesen-Zähler und Kachel „Neue Nachrichten“ auf dem Dashboard
+- [x] Ausblenden statt löschen, der Urheber bleibt erhalten (wie bei Aufgaben und Buchungen)
+- [x] Schutz wie überall: nur angemeldet, CSRF, Rate-Limit pro Nutzer (30/Stunde), Text ohne HTML (Ausgabe escapen)
 - [ ] Später: Benachrichtigung per Discord-Webhook (siehe Phase 3)
 
 ## Administration
@@ -135,5 +140,5 @@ Neue Seite `/nachrichten`. Ein Ort für alles, was nicht direkt eine Aufgabe ode
 ## Später (Phase 3)
 
 - Rechnungen zwischen Höfen (Buchführung, die App bewegt kein Geld im Spiel)
-- Karte mit Fahrzeugpositionen
+- ~~Karte mit Fahrzeugpositionen~~ (kam mit 0.10 im Fuhrpark)
 - Discord-Webhook

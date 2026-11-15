@@ -440,7 +440,9 @@ CREATE TABLE IF NOT EXISTS tasks (
     updated_at     DATETIME NOT NULL,
     done_at        DATETIME NULL,
     done_by        INT UNSIGNED NULL,
+    done_day       INT NULL,                                 -- Spieltag, an dem erledigt (fürs Aufräumen, ab 0.9)
     KEY idx_task_board (savegame_id, status),
+    KEY idx_task_done (savegame_id, status, done_day),
     KEY idx_task_auto (savegame_id, auto_key),
     KEY idx_task_assignee (assignee_id, status),
     KEY idx_task_contract (contract_id)
@@ -463,3 +465,101 @@ INSERT IGNORE INTO finance_categories (kind, code, name, sort_order) VALUES ('ex
 
 INSERT IGNORE INTO role_permissions (role_key, permission) VALUES ('hofleiter', 'contracts.manage');
 INSERT IGNORE INTO settings (name, value) VALUES ('seed_contracts_permissions', '1');
+
+-- ---------- Monatsabschluss und Löschen von Buchungen (0.8) ----------
+-- Eigener Buchungssatz für Korrekturen beim Monatsabschluss (je Richtung einer, weil Buchungssätze Einnahme oder Ausgabe sind).
+-- Taucht beim normalen Buchen nicht auf, nur der Monatsabschluss bucht darauf.
+INSERT IGNORE INTO finance_categories (kind, code, name, sort_order) VALUES
+    ('income',  'correction_income',  'Korrektur (Abgleich)', 95),
+    ('expense', 'correction_expense', 'Korrektur (Abgleich)', 95);
+
+-- Abgeschlossene Spielmonate je Hof. month_start/month_end = Spieltage des Monats,
+-- lock_from/lock_to = Spieltage, deren Buchungen in den Abgleich dieses Monats eingehen (dort ist danach nichts mehr änderbar).
+CREATE TABLE IF NOT EXISTS finance_month_closes (
+    id           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    savegame_id  INT UNSIGNED NOT NULL,
+    farm_id      TINYINT UNSIGNED NOT NULL,
+    month_start  INT NOT NULL,
+    month_end    INT NOT NULL,
+    period       VARCHAR(20) NOT NULL,
+    lock_from    INT NOT NULL,
+    lock_to      INT NOT NULL,
+    open_amount  BIGINT NOT NULL DEFAULT 0,
+    booking_id   INT UNSIGNED NULL,
+    closed_by    INT UNSIGNED NULL,
+    closed_at    DATETIME NOT NULL,
+    UNIQUE KEY uq_month_close (savegame_id, farm_id, month_start),
+    KEY idx_month_lock (savegame_id, farm_id, lock_from, lock_to)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Löschprotokoll: Was gelöscht wurde, bleibt hier mit Urheber, Löschendem und Zeitpunkt stehen
+CREATE TABLE IF NOT EXISTS booking_deletions (
+    id           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    booking_id   INT UNSIGNED NOT NULL,
+    savegame_id  INT UNSIGNED NOT NULL,
+    farm_id      TINYINT UNSIGNED NOT NULL,
+    category_id  INT UNSIGNED NULL,
+    amount       BIGINT NOT NULL,
+    game_day     INT NOT NULL,
+    text         VARCHAR(255) NOT NULL DEFAULT '',
+    source       VARCHAR(20) NOT NULL DEFAULT 'manual',
+    was_cancelled TINYINT(1) NOT NULL DEFAULT 0,
+    created_by   INT UNSIGNED NULL,
+    created_at   DATETIME NOT NULL,
+    deleted_by   INT UNSIGNED NULL,
+    deleted_at   DATETIME NOT NULL,
+    reason       VARCHAR(255) NOT NULL DEFAULT '',
+    KEY idx_deletions (savegame_id, farm_id, deleted_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Neues Recht „Monat abschließen“ für den Farmmanager (nur einmal, damit Änderungen des Admins bleiben).
+-- „Buchungen löschen“ hat nach dem Update nur der Admin.
+INSERT IGNORE INTO role_permissions (role_key, permission) VALUES ('hofleiter', 'finance.close');
+INSERT IGNORE INTO settings (name, value) VALUES ('seed_finance_close_permissions', '1');
+
+-- ---------- Nachrichtenboard (0.11) ----------
+-- Beiträge: Hinweis (note), Ankündigung (announcement) oder Mod-Wunsch (mod_wish).
+-- Gilt über Savegames hinweg. Ausblenden statt löschen, der Urheber bleibt.
+CREATE TABLE IF NOT EXISTS board_posts (
+    id           INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    kind         VARCHAR(20) NOT NULL DEFAULT 'note',
+    title        VARCHAR(150) NOT NULL,
+    body         TEXT NULL,
+    ref_type     VARCHAR(20) NULL,                         -- task | contract | vehicle
+    ref_id       VARCHAR(80) NULL,
+    is_pinned    TINYINT(1) NOT NULL DEFAULT 0,
+    expires_at   DATE NULL,                                -- nur Ankündigungen: ab dann nicht mehr oben
+    mod_url      VARCHAR(255) NULL,
+    mod_status   VARCHAR(20) NULL,                         -- open | accepted | rejected | installed
+    mod_name     VARCHAR(100) NULL,                        -- bei „installiert“: Eintrag in der Downloadverwaltung
+    created_by   INT UNSIGNED NULL,
+    created_at   DATETIME NOT NULL,
+    updated_at   DATETIME NOT NULL,
+    hidden_at    DATETIME NULL,
+    hidden_by    INT UNSIGNED NULL,
+    KEY idx_board_list (hidden_at, kind, created_at),
+    KEY idx_board_ref (ref_type, ref_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Antworten auf einen Beitrag
+CREATE TABLE IF NOT EXISTS board_replies (
+    id          INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    post_id     INT UNSIGNED NOT NULL,
+    body        TEXT NOT NULL,
+    created_by  INT UNSIGNED NULL,
+    created_at  DATETIME NOT NULL,
+    hidden_at   DATETIME NULL,
+    hidden_by   INT UNSIGNED NULL,
+    KEY idx_board_replies (post_id, id),
+    CONSTRAINT fk_board_replies_post FOREIGN KEY (post_id) REFERENCES board_posts (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Bis wann jemand das Board gelesen hat (für den Ungelesen-Zähler)
+CREATE TABLE IF NOT EXISTS board_reads (
+    user_id       INT UNSIGNED NOT NULL PRIMARY KEY,
+    last_read_at  DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO role_permissions (role_key, permission) VALUES
+    ('hofleiter', 'board.post'), ('hofleiter', 'board.announce'), ('hofleiter', 'board.moderate'), ('mitarbeiter', 'board.post');
+INSERT IGNORE INTO settings (name, value) VALUES ('seed_board_permissions', '1');

@@ -19,6 +19,7 @@ const SETTING_DEFAULTS = [
     'tasks_auto_repair'         => '1',
     'tasks_auto_animals'        => '1',
     'tasks_review_required'     => '1',
+    'tasks_cleanup_done'        => '1',
 ];
 
 function setting(string $name): string

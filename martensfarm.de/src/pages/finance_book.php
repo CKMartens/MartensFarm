@@ -11,7 +11,8 @@ if ($sgId === null || !$farmIds) {
     return;
 }
 $farms = array_intersect_key(active_farms(), array_flip($farmIds));
-$cats = array_filter(finance_categories(), fn($c) => (int) $c['is_active'] === 1);
+$cats = finance_bookable_categories();
+$vehicleOpts = vehicle_options($farmIds);
 $errors = [];
 
 // Vorschlag aus einem Ereignis (Fahrzeug, Farmland)
@@ -33,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amount = is_numeric($amountRaw) ? (int) round(abs((float) $amountRaw)) : 0;
     $day = (int) ($_POST['game_day'] ?? -1);
     $text = trim((string) ($_POST['text'] ?? ''));
+    $vehicleId = (string) ($_POST['vehicle'] ?? '');
 
     if (!in_array($farmId, $farmIds, true)) {
         $errors[] = 'Für diesen Hof darfst du nicht buchen.';
@@ -46,22 +48,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($day < 0 || $day > 1_000_000) {
         $errors[] = 'Der Spieltag passt nicht.';
     }
+    if (in_array($farmId, $farmIds, true) && $day >= 0 && ($lock = finance_day_locked($sgId, $farmId, $day))) {
+        $errors[] = 'Spieltag ' . $day . ' gehört zum abgeschlossenen Monat ' . game_month_label($lock['period'], (int) $lock['month_start'], (int) $lock['month_end'])
+            . '. Bitte einen späteren Tag nehmen oder den Monat wieder öffnen lassen.';
+    }
     if (mb_strlen($text) > 255) {
         $errors[] = 'Der Text ist zu lang (höchstens 255 Zeichen).';
+    }
+    if ($vehicleId !== '') {
+        $veh = isset($vehicleOpts[$vehicleId]) ? vehicle_get($vehicleId) : null;
+        if (!$veh || (int) $veh['farm_id'] !== $farmId) {
+            $errors[] = 'Das Fahrzeug gehört nicht zu diesem Hof.';
+        }
     }
     if ($suggestion && (int) $suggestion['farm_id'] !== $farmId) {
         $suggestion = null;   // Hof geändert → kein Bezug mehr zum Vorschlag
     }
     if (!$errors) {
         finance_book($user, $sgId, $farmId, $catId, $amount, $day, $text,
-            $suggestion ? 'suggestion' : 'manual', $suggestion['ref_type'] ?? null, $suggestion['ref_id'] ?? null,
+            $suggestion ? 'suggestion' : 'manual',
+            $suggestion['ref_type'] ?? ($vehicleId !== '' ? 'vehicle' : null), $suggestion['ref_id'] ?? ($vehicleId !== '' ? $vehicleId : null),
             $suggestion ? (int) $suggestion['id'] : null);
         flash('success', 'Gebucht: ' . $cats[$catId]['name'] . ', ' . fmt_money($amount) . '.');
         redirect('finanzen?hof=' . $farmId);
     }
-    $form = ['farm_id' => $farmId, 'category_id' => $catId, 'amount' => (string) ($_POST['amount'] ?? ''), 'game_day' => $day, 'text' => $text];
+    $form = ['farm_id' => $farmId, 'category_id' => $catId, 'amount' => (string) ($_POST['amount'] ?? ''), 'game_day' => $day, 'text' => $text, 'vehicle' => $vehicleId];
 } else {
-    $farmId = (int) ($suggestion['farm_id'] ?? $_GET['hof'] ?? 0);
+    $preVehicle = isset($_GET['fahrzeug'], $vehicleOpts[(string) $_GET['fahrzeug']]) ? vehicle_get((string) $_GET['fahrzeug']) : null;
+    $farmId = (int) ($suggestion['farm_id'] ?? $preVehicle['farm_id'] ?? $_GET['hof'] ?? 0);
     if (!in_array($farmId, $farmIds, true)) {
         $farmId = in_array((int) $user['farm_id'], $farmIds, true) ? (int) $user['farm_id'] : $farmIds[0];
     }
@@ -71,7 +85,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'amount'      => $suggestion && $suggestion['amount'] !== null ? (string) $suggestion['amount'] : '',
         'game_day'    => $suggestion['game_day'] ?? current_game_day() ?? 0,
         'text'        => $suggestion ? (SUGGESTION_KINDS[$suggestion['kind']][0] ?? '') . ': ' . $suggestion['title'] : '',
+        'vehicle'     => $suggestion && $suggestion['ref_type'] === 'vehicle' ? (string) $suggestion['ref_id'] : (string) ($preVehicle['unique_id'] ?? ''),
     ];
 }
 
-render('finance_book', compact('user', 'farms', 'cats', 'form', 'errors', 'suggestion') + ['title' => 'Buchen', 'nav' => 'finanzen', 'gameDay' => current_game_day()]);
+render('finance_book', compact('user', 'farms', 'cats', 'form', 'errors', 'suggestion', 'vehicleOpts') + ['title' => 'Buchen', 'nav' => 'finanzen', 'gameDay' => current_game_day()]);

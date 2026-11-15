@@ -36,6 +36,11 @@ if ($sgId !== null && finance_can_view($user, (int) $farmId)) {
 $myTasks = tasks_open_for_user((int) $user['id']);
 $freeTasks = (int) q('SELECT COUNT(*) FROM tasks WHERE savegame_id <=> ? AND assignee_id IS NULL AND status IN (\'todo\', \'doing\') AND (farm_id = ? OR farm_id IS NULL)', [$sgId, $farmId])->fetchColumn();
 
+// Nachrichten: Ungelesene und angeheftete Ankündigungen
+$boardUnread = board_unread_count($user);
+$boardPinned = q('SELECT id, title, created_at FROM board_posts WHERE kind = \'announcement\' AND is_pinned = 1 AND hidden_at IS NULL
+                  AND (expires_at IS NULL OR expires_at >= CURDATE()) ORDER BY created_at DESC LIMIT 3')->fetchAll();
+
 // Verkaufstipps: aktuelle Periode vs. Bestpreis
 $period = current_period_key();
 $tips = [];
@@ -48,4 +53,4 @@ foreach (['MILK', 'WHEAT', 'BARLEY', 'OAT', 'CANOLA', 'MAIZE', 'WOODCHIPS'] as $
     $tips[] = ['type' => $ft, 'now' => $period ? ($rows[$period] ?? null) : null, 'best' => max($rows), 'best_period' => $best];
 }
 
-render('dashboard', compact('user', 'snap', 'lastOk', 'players', 'farms', 'farmId', 'moneyHistory', 'fleet', 'repairs', 'threshold', 'pens', 'animalCount', 'penAlerts', 'mfInfo', 'tips', 'period', 'finance', 'myTasks', 'freeTasks') + ['title' => 'Dashboard', 'nav' => 'dashboard']);
+render('dashboard', compact('user', 'snap', 'lastOk', 'players', 'farms', 'farmId', 'moneyHistory', 'fleet', 'repairs', 'threshold', 'pens', 'animalCount', 'penAlerts', 'mfInfo', 'tips', 'period', 'finance', 'myTasks', 'freeTasks', 'boardUnread', 'boardPinned') + ['title' => 'Dashboard', 'nav' => 'dashboard']);

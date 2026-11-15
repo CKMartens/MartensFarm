@@ -23,13 +23,19 @@ const PERMISSIONS = [
     'finance.view'      => ['Finanzen', 'Finanzen sehen', 'Kassenbuch und Abgleich des eigenen Hofs ansehen'],
     'finance.book'      => ['Finanzen', 'Buchen', 'Einnahmen und Ausgaben erfassen, Vorschläge übernehmen, eigene Buchungen stornieren'],
     'finance.all_farms' => ['Finanzen', 'Alle Höfe', 'Finanzen aller Höfe sehen (und mit „Buchen“ auch buchen), nicht nur den eigenen'],
-    'finance.manage'    => ['Finanzen', 'Buchungssätze verwalten', 'Kategorien und Zuordnung der Spiel-Statistik pflegen, fremde Buchungen stornieren'],
+    'finance.manage'    => ['Finanzen', 'Buchungssätze verwalten', 'Kategorien und Zuordnung der Spiel-Statistik pflegen, fremde Buchungen stornieren, abgeschlossene Monate wieder öffnen'],
+    'finance.close'     => ['Finanzen', 'Monat abschließen', 'Offenen Rest eines Spielmonats per Korrekturbuchung ausgleichen und den Monat schließen'],
+    'finance.delete'    => ['Finanzen', 'Buchungen löschen', 'Buchungen endgültig löschen, z. B. Fehleingaben (bleibt im Löschprotokoll stehen)'],
     'downloads.view'   => ['Downloads', 'Mods herunterladen', 'Mods des Gameservers über die App laden'],
     'downloads.manage' => ['Downloads', 'Downloads verwalten', 'Mods aus- und einblenden, Hinweise/Changelog pflegen, Download-Zahlen sehen'],
     'tasks.create'   => ['Aufgaben', 'Aufgaben anlegen', 'Neue Aufgaben aufs Board stellen, eigene bearbeiten und verwerfen'],
     'tasks.assign'   => ['Aufgaben', 'Aufgaben verteilen', 'Aufgaben zuweisen, alle bearbeiten und verschieben, Prüfung abhaken'],
     'tasks.work'     => ['Aufgaben', 'Aufgaben bearbeiten', 'Offene Aufgaben übernehmen, eigene verschieben und kommentieren'],
+    'tasks.delete'   => ['Aufgaben', 'Aufgaben löschen', 'Aufgaben endgültig löschen, mit Kommentaren und Verlauf'],
     'contracts.manage' => ['Aufgaben', 'Lohnaufträge verwalten', 'Lohnaufträge anlegen, ändern, abschließen und stornieren'],
+    'board.post'     => ['Nachrichten', 'Beiträge schreiben', 'Hinweise und Mod-Wünsche schreiben, antworten, eigene ausblenden'],
+    'board.announce' => ['Nachrichten', 'Ankündigen', 'Ankündigungen an alle, anheften und mit Ablaufdatum'],
+    'board.moderate' => ['Nachrichten', 'Moderieren', 'Fremde Beiträge ausblenden, Status von Mod-Wünschen setzen'],
 ];
 
 /** Alle Rollen, sortiert: role_key => Zeile */

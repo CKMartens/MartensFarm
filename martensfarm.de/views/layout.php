@@ -43,6 +43,8 @@ $items = [
                 <div class="nav-title">Organisation</div>
                 <a class="nav-item<?= $nav === 'aufgaben' ? ' active' : '' ?>" href="<?= e(url('aufgaben')) ?>"><span class="nav-icon">☑</span>Aufgaben</a>
                 <a class="nav-item<?= $nav === 'lohnauftraege' ? ' active' : '' ?>" href="<?= e(url('lohnauftraege')) ?>"><span class="nav-icon">🤝</span>Lohnaufträge</a>
+                <?php $unread = $nav === 'nachrichten' ? 0 : board_unread_count($u); ?>
+                <a class="nav-item<?= $nav === 'nachrichten' ? ' active' : '' ?>" href="<?= e(url('nachrichten')) ?>"><span class="nav-icon">📣</span>Nachrichten<?= $unread ? ' <span class="nav-badge" title="ungelesen">' . $unread . '</span>' : '' ?></a>
                 <span class="nav-item disabled" title="Kommt in Phase 3"><span class="nav-icon">🧾</span>Rechnungen</span>
                 <?php if (can($u, 'downloads.view')): ?>
                     <a class="nav-item<?= $nav === 'downloads' ? ' active' : '' ?>" href="<?= e(url('downloads')) ?>"><span class="nav-icon">⬇</span>Downloads</a>

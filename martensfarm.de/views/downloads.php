@@ -38,7 +38,7 @@ $uploadForm = function (array $m, string $label) use ($limitMb): void { ?>
             </thead>
             <tbody>
             <?php foreach ($mods as $m): ?>
-                <tr<?= (int) $m['is_hidden'] === 1 || (int) $m['on_server'] === 0 ? ' class="inactive"' : '' ?>>
+                <tr id="mod-<?= e($m['mod_name']) ?>"<?= (int) $m['is_hidden'] === 1 || (int) $m['on_server'] === 0 ? ' class="inactive"' : '' ?>>
                     <td>
                         <strong><?= e($m['title'] ?: $m['mod_name']) ?></strong><?= $stateBadge[$m['state']] ?>
                         <?php if ((int) $m['is_hidden'] === 1): ?> <span class="badge">ausgeblendet</span><?php endif; ?>

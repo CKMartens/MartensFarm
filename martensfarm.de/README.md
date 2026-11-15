@@ -7,11 +7,12 @@ Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im 
 - Anmeldung ohne Passwort: Link plus 6-stelliger Code per E-Mail
 - Nutzerverwaltung mit Hofzuordnung, Rollen (Admin, Farmmanager, Spieler, Gast) und frei einstellbaren Rechten
 - Dashboard: Server online, Spieler, Uhrzeit im Spiel, Kontostand mit Verlauf, fällige Reparaturen, Verkaufstipps
-- Fuhrpark mit Schaden, Stunden, Füllständen und Verkaufshistorie
+- Fuhrpark mit Schaden, Stunden, Füllständen und Verkaufshistorie, Filter, Karte und Detailseite mit Kosten je Fahrzeug (ab 0.10)
 - Preise vom Server mit bestem und schlechtestem Monat
-- Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4)
+- Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4), Monatsabschluss mit Korrekturbuchung und Löschen (ab 0.8)
 - Downloads: Mods, die nicht im ModHub sind, für die Mitspieler; Server-Liste automatisch aus dem Stats-Feed (ab 0.6)
-- Aufgaben-Board mit automatischen Werkstatt- und Tierpflege-Aufgaben, Lohnaufträge mit Buchungsvorschlag (ab 0.7)
+- Nachrichtenboard: Ankündigungen, Mod-Wünsche und Hinweise zu Aufgaben, Lohnaufträgen und Fahrzeugen (ab 0.11)
+- Aufgaben-Board mit automatischen Werkstatt- und Tierpflege-Aufgaben, Lohnaufträge mit Buchungsvorschlag (ab 0.7), Löschen und Aufräumen (ab 0.9)
 
 ---
 
@@ -244,6 +245,70 @@ So funktioniert's:
   Daraus eine oder mehrere Aufgaben. Sind alle erledigt (oder hakt man den Auftrag ab), entsteht unter Finanzen ein
   Vorschlag *Lohnauftrag erledigt* (Einnahme beim eigenen Hof) und, wenn der Auftraggeber ein Hof im Spiel ist,
   *Lohnarbeit bezahlen* (Ausgabe beim Auftraggeber). Die App führt nur Buch, im Spiel fließt kein Geld.
+
+### Update auf 0.8 (Monatsabschluss, Buchungen löschen)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Legt `finance_month_closes` und `booking_deletions` an, dazu den Buchungssatz
+   **Korrektur (Abgleich)** (je einmal als Einnahme und Ausgabe) und gibt dem Farmmanager einmalig das neue Recht **Monat abschließen**.
+   **Buchungen löschen** hat nach dem Update nur der Admin.
+
+So funktioniert's:
+- **Monatsabschluss** (Karte auf `/finanzen`): Ist ein Spielmonat vorbei und hat der Server danach gespeichert, zeigt die Liste
+  „kann abgeschlossen werden“. *Abschließen* bucht den Rest, der sich nicht zuordnen lässt, auf *Korrektur (Abgleich)*, am letzten
+  Abgleich-Tag des Monats. Danach steht der Monat auf 0 und ist gesperrt: keine neuen Buchungen, Stornos oder Löschungen für seine Tage,
+  und die Spiel-Vorschläge dafür verschwinden.
+- Ein Abgleich-Zeitraum (von Save zu Save) zählt zu dem Monat, in dem sein letzter Tag liegt. Gesperrt werden genau die Tage,
+  die in diese Zeiträume fallen.
+- **Wieder öffnen** kann, wer *Buchungssätze verwalten* darf. Die Korrektur wird dabei storniert, nicht gelöscht.
+- Den Buchungssatz *Korrektur (Abgleich)* gibt es beim normalen Buchen nicht, nur der Monatsabschluss bucht darauf.
+- **Löschen** (Recht *Buchungen löschen*): zusätzlich zum Stornieren, z. B. für Fehleingaben. Mit Rückfrage und optionalem Grund.
+  Die Buchung verschwindet aus Kassenbuch und Abgleich, im **Löschprotokoll** unten auf der Finanzseite bleibt stehen, was es war,
+  wer sie angelegt und wer sie gelöscht hat. Ein verknüpfter Vorschlag wird wieder geöffnet.
+
+### Update auf 0.9 (Aufgaben löschen und aufräumen)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Ergänzt `tasks` um den Erledigt-Spieltag (`done_day`).
+   Das neue Recht **Aufgaben löschen** hat nach dem Update nur der Admin.
+
+So funktioniert's:
+- **Löschen:** Unten auf der Aufgabenseite „Aufgabe löschen …“, danach eine Rückfrage. Kommentare und Verlauf gehen mit.
+  Aufgaben eines noch offenen Lohnauftrags lassen sich nicht löschen, sonst stimmt dessen Fortschritt nicht mehr.
+- **Aufräumen:** Bei jedem Import löscht die App erledigte Aufgaben, die in einem früheren Spielmonat erledigt wurden
+  (Spielkalender aus der Export-Mod). Verworfene bleiben, ebenso Aufgaben offener Lohnaufträge. Buchungsvorschläge hängen
+  am Lohnauftrag, nicht an der Aufgabe, und bleiben deshalb erhalten. Abschaltbar unter **Einstellungen → Aufgaben**.
+- Aufgaben, die schon vor dem Update erledigt waren, bekommen beim ersten Import den aktuellen Spieltag und gehen im nächsten Spielmonat.
+
+### Update auf 0.10 (Fuhrpark)
+
+Nur Dateien hochladen, kein Datenbank-Update nötig (neu sind u. a. `src/fleet.php`, `src/pages/vehicle.php`, `views/vehicle.php`).
+
+So funktioniert's:
+- **Filter** auf `/fuhrpark`: Name, Gruppe, Eigentum/geleast/Auftrag, „nur Werkstatt fällig“. Alles per Link teilbar.
+- **Karte** (aufklappbar): jedes Fahrzeug als Punkt auf dem Kartenbild, Farbe nach Schaden, Klick öffnet das Fahrzeug.
+  Die Position kommt aus `vehicles.xml`, also mit dem Save. Die Kartengröße liest die App aus dem Stats-Feed (`mapSize`, sonst 2048 m).
+- **Detailseite** je Fahrzeug (`/fuhrpark/fahrzeug?id=…`): Schaden, Stunden, Füllstände, Position, Aufgaben und alle Buchungen
+  mit Bezug auf das Fahrzeug samt Summe. Knöpfe „Kosten buchen“ und „Aufgabe“ belegen Hof und Fahrzeug vor.
+- **Kosten je Fahrzeug:** Beim Buchen lässt sich optional ein Fahrzeug wählen. Kauf- und Verkaufsvorschläge hängen schon dran.
+  Die Spalte „Gebucht“ im Fuhrpark und die Summe auf der Detailseite sieht nur, wer die Finanzen des Hofs sehen darf.
+
+### Update auf 0.11 (Nachrichtenboard)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Legt `board_posts`, `board_replies` und `board_reads` an und setzt einmalig
+   die neuen Rechte: Farmmanager **Beiträge schreiben**, **Ankündigen** und **Moderieren**, Spieler **Beiträge schreiben**. Gäste lesen nur.
+
+So funktioniert's:
+- Seite `/nachrichten` mit drei Arten: **Ankündigung** (an alle, optional angeheftet und mit Ablaufdatum, erscheint dann auch oben
+  auf dem Dashboard), **Mod-Wunsch** (Link zum ModHub oder zur Quelle, Status offen/angenommen/abgelehnt/installiert; bei „installiert“
+  Verweis auf den Eintrag in den Downloads) und **Hinweis** (optional mit Bezug auf Aufgabe, Lohnauftrag oder Fahrzeug, erscheint dort
+  auch auf der Detailseite unter „Hinweise“). Zu jedem Beitrag gibt es Antworten.
+- **Ungelesen:** Zähler im Menü und Kachel „Neue Nachrichten“ auf dem Dashboard. Gelesen ist, was man beim letzten Öffnen von `/nachrichten` gesehen hat.
+- **Ausblenden statt löschen:** Eigene Beiträge und Antworten blendet man selbst aus, fremde nur mit *Moderieren*. Wer moderiert,
+  sieht Ausgeblendetes über „Ausgeblendete zeigen“ und kann es wieder einblenden. Der Urheber bleibt immer erhalten.
+- **Schutz:** nur angemeldet, CSRF, nur Text (wird escaped), höchstens 30 Beiträge plus Antworten pro Nutzer und Stunde.
+- Die Beiträge gelten über Savegames hinweg.
 
 ---
 

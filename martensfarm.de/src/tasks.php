@@ -174,7 +174,7 @@ function task_ref(array $t): ?array
     switch ($t['ref_type']) {
         case 'vehicle':
             $v = q('SELECT name, farm_id FROM vehicles WHERE unique_id = ?', [$t['ref_id']])->fetch();
-            return ['Fahrzeug', $v['name'] ?? 'Fahrzeug', $v ? 'fuhrpark?hof=' . (int) $v['farm_id'] : null];
+            return ['Fahrzeug', $v['name'] ?? 'Fahrzeug', $v ? 'fuhrpark/fahrzeug?id=' . rawurlencode((string) $t['ref_id']) : null];
         case 'pen':
             $p = q('SELECT name, farm_id FROM husbandries WHERE savegame_id <=> ? AND pen_key = ?', [$sg, $t['ref_id']])->fetch();
             return ['Stall', $p['name'] ?? 'Stall', $p ? 'tiere?hof=' . (int) $p['farm_id'] : null];
@@ -285,6 +285,26 @@ function task_can_take(?array $user, array $t): bool
     return can($user, 'tasks.work') && $t['assignee_id'] === null && !in_array($t['status'], ['done', 'dropped'], true);
 }
 
+/** Löschen: eigenes Recht. Aufgaben eines offenen Lohnauftrags nicht, sonst stimmt dessen Fortschritt nicht mehr. */
+function task_can_delete(?array $user, array $t): bool
+{
+    if (!can($user, 'tasks.delete')) {
+        return false;
+    }
+    if ($t['contract_id'] !== null) {
+        $st = q('SELECT status FROM contracts WHERE id = ?', [(int) $t['contract_id']])->fetchColumn();
+        return $st === false || in_array($st, ['done', 'cancelled'], true);
+    }
+    return true;
+}
+
+/** Aufgabe endgültig löschen, Kommentare und Verlauf gehen mit (ON DELETE CASCADE) */
+function task_delete(int $taskId): void
+{
+    q('DELETE FROM task_events WHERE task_id = ?', [$taskId]);
+    q('DELETE FROM tasks WHERE id = ?', [$taskId]);
+}
+
 function task_can_comment(?array $user): bool
 {
     return can_any($user, ['tasks.work', 'tasks.create', 'tasks.assign']);
@@ -307,14 +327,14 @@ function task_create(?array $user, array $data): int
     $now = now();
     $status = isset(TASK_COLUMNS[$data['status'] ?? '']) ? $data['status'] : 'todo';
     q('INSERT INTO tasks (savegame_id, farm_id, title, description, status, priority, assignee_id, due_day, ref_type, ref_id, contract_id, auto_key,
-                          created_by, created_at, updated_at, done_at, done_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+                          created_by, created_at, updated_at, done_at, done_by, done_day)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
         $data['savegame_id'] ?? current_savegame_id(),
         ($data['farm_id'] ?? null) ?: null,
         mb_substr((string) $data['title'], 0, 150),
         ($data['description'] ?? '') !== '' ? mb_substr((string) $data['description'], 0, 5000) : null,
         $status,
-        isset(TASK_PRIORITIES[(int) ($data['priority'] ?? 2)]) ? (int) $data['priority'] : 2,
+        isset(TASK_PRIORITIES[(int) ($data['priority'] ?? 0)]) ? (int) $data['priority'] : 2,
         ($data['assignee_id'] ?? null) ?: null,
         $data['due_day'] ?? null,
         $data['ref_type'] ?? null,
@@ -325,6 +345,7 @@ function task_create(?array $user, array $data): int
         $now, $now,
         $status === 'done' ? $now : null,
         $status === 'done' && $user ? (int) $user['id'] : null,
+        $status === 'done' ? current_game_day() : null,
     ]);
     $id = (int) db()->lastInsertId();
     task_log($id, $user ? (int) $user['id'] : null, 'created', $user ? '' : 'Automatisch angelegt');
@@ -342,8 +363,8 @@ function task_set_status(array $t, string $status, ?array $user, string $note = 
     }
     $uid = $user ? (int) $user['id'] : null;
     $done = $status === 'done';
-    q('UPDATE tasks SET status = ?, updated_at = ?, done_at = ?, done_by = ? WHERE id = ?',
-        [$status, now(), $done ? now() : null, $done ? $uid : null, (int) $t['id']]);
+    q('UPDATE tasks SET status = ?, updated_at = ?, done_at = ?, done_by = ?, done_day = ? WHERE id = ?',
+        [$status, now(), $done ? now() : null, $done ? $uid : null, $done ? current_game_day() : null, (int) $t['id']]);
     task_log((int) $t['id'], $uid, $user ? 'status' : 'auto', TASK_STATUSES[$t['status']] . ' → ' . TASK_STATUSES[$status] . ($note !== '' ? ' (' . $note . ')' : ''));
 
     // Wer eine freie Aufgabe in Arbeit nimmt, übernimmt sie
@@ -511,6 +532,32 @@ function tasks_auto_sync(int $sgId, string $now, array &$log): void
     }
     if ($created || $closed) {
         $log[] = "Aufgaben: {$created} neu, {$closed} automatisch erledigt.";
+    }
+}
+
+/**
+ * Erledigte Aufgaben aufräumen: Was in einem früheren Spielmonat erledigt wurde, wird gelöscht (Einstellung, Standard an).
+ * Ausgenommen sind Aufgaben eines noch offenen Lohnauftrags. Buchungsvorschläge hängen am Auftrag, nicht an der Aufgabe.
+ * Aufgaben, die vor 0.8 erledigt wurden, haben keinen Erledigt-Tag: Sie bekommen den heutigen und gehen im nächsten Monat.
+ */
+function tasks_cleanup_done(int $sgId, array &$log): void
+{
+    if (setting_int('tasks_cleanup_done') !== 1 || ($today = current_game_day()) === null) {
+        return;
+    }
+    q('UPDATE tasks SET done_day = ? WHERE savegame_id = ? AND status = \'done\' AND done_day IS NULL', [$today, $sgId]);
+    $month = game_month_of($today);
+    if ($month === null) {
+        return;
+    }
+    $ids = q('SELECT t.id FROM tasks t LEFT JOIN contracts c ON c.id = t.contract_id
+              WHERE t.savegame_id = ? AND t.status = \'done\' AND t.done_day < ?
+                AND (t.contract_id IS NULL OR c.id IS NULL OR c.status IN (\'done\', \'cancelled\'))', [$sgId, $month['start']])->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($ids as $id) {
+        task_delete((int) $id);
+    }
+    if ($ids) {
+        $log[] = 'Aufgaben: ' . count($ids) . ' erledigte aus dem Vormonat gelöscht.';
     }
 }
 

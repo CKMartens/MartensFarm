@@ -101,17 +101,31 @@ function finance_can_book(?array $user, int $farmId): bool
     return can($user, 'finance.book') && finance_can_view($user, $farmId);
 }
 
-/** Eigene Buchungen darf jeder mit finance.book stornieren, fremde nur mit finance.manage */
+/**
+ * Eigene Buchungen darf jeder mit finance.book stornieren, fremde nur mit finance.manage.
+ * Nicht in abgeschlossenen Monaten und nicht die Korrektur selbst (die geht nur über „Monat wieder öffnen“).
+ */
 function finance_can_cancel(?array $user, array $booking): bool
 {
     if ($booking['cancelled_at'] !== null || (int) $booking['savegame_id'] !== (int) current_savegame_id()
-        || !finance_can_view($user, (int) $booking['farm_id'])) {
+        || !finance_can_view($user, (int) $booking['farm_id']) || $booking['source'] === 'correction'
+        || finance_day_locked((int) $booking['savegame_id'], (int) $booking['farm_id'], (int) $booking['game_day'])) {
         return false;
     }
     if (can($user, 'finance.manage')) {
         return true;
     }
     return can($user, 'finance.book') && (int) $booking['created_by'] === (int) ($user['id'] ?? 0);
+}
+
+/** Echtes Löschen: nur mit finance.delete, nur im laufenden Savegame, nicht in abgeschlossenen Monaten, keine Korrekturen */
+function finance_can_delete(?array $user, array $booking): bool
+{
+    return can($user, 'finance.delete')
+        && (int) $booking['savegame_id'] === (int) current_savegame_id()
+        && finance_can_view($user, (int) $booking['farm_id'])
+        && $booking['source'] !== 'correction'
+        && !finance_day_locked((int) $booking['savegame_id'], (int) $booking['farm_id'], (int) $booking['game_day']);
 }
 
 // ---------------------------------------------------------------- Kategorien
@@ -137,6 +151,21 @@ function finance_category_id(string $code): ?int
         }
     }
     return null;
+}
+
+/** Buchungssätze der Monatskorrektur (je Richtung einer). Beim normalen Buchen nicht auswählbar. */
+const CORRECTION_CODES = ['income' => 'correction_income', 'expense' => 'correction_expense'];
+
+function finance_is_correction_category(int $categoryId): bool
+{
+    $code = finance_categories()[$categoryId]['code'] ?? null;
+    return $code !== null && in_array($code, CORRECTION_CODES, true);
+}
+
+/** Buchungssätze fürs normale Buchen: aktiv und keine Korrektur */
+function finance_bookable_categories(): array
+{
+    return array_filter(finance_categories(), fn($c, $id) => (int) $c['is_active'] === 1 && !finance_is_correction_category((int) $id), ARRAY_FILTER_USE_BOTH);
 }
 
 function category_label(?array $cat): string
@@ -304,6 +333,216 @@ function finance_cancel(array $user, int $bookingId): bool
     return true;
 }
 
+/**
+ * Buchung endgültig löschen. Im Löschprotokoll bleibt stehen, was es war, wer sie angelegt und wer sie gelöscht hat.
+ * Ein verknüpfter Vorschlag wird wieder geöffnet.
+ */
+function finance_delete(array $user, int $bookingId, string $reason = ''): bool
+{
+    $b = q('SELECT * FROM bookings WHERE id = ?', [$bookingId])->fetch();
+    if (!$b || !finance_can_delete($user, $b)) {
+        return false;
+    }
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        q('INSERT INTO booking_deletions (booking_id, savegame_id, farm_id, category_id, amount, game_day, text, source, was_cancelled,
+                                          created_by, created_at, deleted_by, deleted_at, reason)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+            $b['id'], $b['savegame_id'], $b['farm_id'], $b['category_id'], $b['amount'], $b['game_day'], $b['text'], $b['source'],
+            $b['cancelled_at'] !== null ? 1 : 0, $b['created_by'], $b['created_at'], (int) $user['id'], now(), mb_substr($reason, 0, 255),
+        ]);
+        q('UPDATE booking_suggestions SET status = \'open\', booking_id = NULL WHERE booking_id = ?', [$bookingId]);
+        q('DELETE FROM bookings WHERE id = ?', [$bookingId]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    return true;
+}
+
+/** Die letzten Einträge im Löschprotokoll eines Hofs */
+function finance_deletions(int $savegameId, int $farmId, int $limit = 20): array
+{
+    return q('SELECT d.*, cu.nickname AS created_nick, du.nickname AS deleted_nick FROM booking_deletions d
+              LEFT JOIN users cu ON cu.id = d.created_by LEFT JOIN users du ON du.id = d.deleted_by
+              WHERE d.savegame_id = ? AND d.farm_id = ? ORDER BY d.deleted_at DESC, d.id DESC LIMIT ' . max(1, $limit),
+        [$savegameId, $farmId])->fetchAll();
+}
+
+// ---------------------------------------------------------------- Monatsabschluss
+
+/**
+ * Spielmonat, in dem ein Spieltag liegt: ['start', 'end', 'period', 'label'].
+ * Rechnet vom aktuellen Spieltag und Monat aus (Export-Mod), deshalb nur fürs laufende Savegame. null = Kalender unbekannt.
+ */
+function game_month_of(int $day): ?array
+{
+    $today = current_game_day();
+    $period = current_period_key();
+    if ($today === null || $period === null) {
+        return null;
+    }
+    $n = max(1, (int) setting_get('days_per_period', '1'));
+    $d = max(1, min($n, (int) setting_get('current_day_in_period', '1')));
+    $curStart = $today - ($d - 1);
+    $k = (int) floor(($day - $curStart) / $n);
+    $start = $curStart + $k * $n;
+    $p = PERIOD_ORDER[(((array_search($period, PERIOD_ORDER, true) + $k) % 12) + 12) % 12];
+    return ['start' => $start, 'end' => $start + $n - 1, 'period' => $p, 'label' => game_month_label($p, $start, $start + $n - 1)];
+}
+
+/** z. B. „Oktober (Tag 31–40)“: mit Spieltagen, weil der Monatsname sich jedes Spieljahr wiederholt */
+function game_month_label(string $period, int $start, int $end): string
+{
+    return period_name($period) . ' (Tag ' . $start . ($end > $start ? '–' . $end : '') . ')';
+}
+
+/** Abgeschlossene Monate eines Hofs: month_start => Zeile */
+function finance_closes(int $savegameId, int $farmId): array
+{
+    static $cache = [];
+    $key = $savegameId . ':' . $farmId;
+    if (!isset($cache[$key])) {
+        $cache[$key] = [];
+        foreach (q('SELECT c.*, u.nickname AS closed_nick FROM finance_month_closes c LEFT JOIN users u ON u.id = c.closed_by
+                    WHERE c.savegame_id = ? AND c.farm_id = ? ORDER BY c.month_start', [$savegameId, $farmId])->fetchAll() as $c) {
+            $cache[$key][(int) $c['month_start']] = $c;
+        }
+    }
+    return $cache[$key];   // nach jeder Änderung folgt ein Redirect, der Cache gilt also nur für eine Anfrage
+}
+
+/** Liegt der Spieltag in einem abgeschlossenen Monat? Gibt den Abschluss zurück oder null. */
+function finance_day_locked(int $savegameId, int $farmId, int $day): ?array
+{
+    foreach (finance_closes($savegameId, $farmId) as $c) {
+        if ($day >= (int) $c['lock_from'] && $day <= (int) $c['lock_to']) {
+            return $c;
+        }
+    }
+    return null;
+}
+
+/**
+ * Monate für den Abschluss, neueste zuerst. Ein Abgleich-Zeitraum zählt zu dem Monat, in dem sein letzter Tag liegt.
+ * Status: closed (abgeschlossen), ready (vorbei und ein Save danach da), waiting (vorbei, aber noch kein Save am/nach Monatsende),
+ * running (läuft noch).
+ */
+function finance_months(int $savegameId, int $farmId, array $rec): array
+{
+    $closes = finance_closes($savegameId, $farmId);
+    $months = [];
+    $isCurrent = $savegameId === (int) current_savegame_id();
+    if ($isCurrent) {
+        foreach ($rec['rows'] as $r) {
+            $m = game_month_of((int) $r['day']);
+            if ($m === null) {
+                break;
+            }
+            $k = $m['start'];
+            $months[$k] ??= $m + ['open' => 0, 'rows' => 0, 'lock_from' => (int) $r['from_day'], 'lock_to' => (int) $r['day'], 'close' => null];
+            $months[$k]['open'] += (int) $r['open'];
+            $months[$k]['rows']++;
+            $months[$k]['lock_from'] = min($months[$k]['lock_from'], (int) $r['from_day']);
+            $months[$k]['lock_to'] = max($months[$k]['lock_to'], (int) $r['day']);
+        }
+    }
+    foreach ($closes as $start => $c) {
+        $months[$start] = [
+            'start' => (int) $c['month_start'], 'end' => (int) $c['month_end'], 'period' => $c['period'],
+            'label' => game_month_label($c['period'], (int) $c['month_start'], (int) $c['month_end']),
+            'open' => (int) ($months[$start]['open'] ?? 0), 'rows' => (int) ($months[$start]['rows'] ?? 0),
+            'lock_from' => (int) $c['lock_from'], 'lock_to' => (int) $c['lock_to'], 'close' => $c,
+        ];
+    }
+    $today = $isCurrent ? current_game_day() : null;
+    $lastDay = $rec['last_day'] ?? null;
+    foreach ($months as &$m) {
+        $m['status'] = match (true) {
+            $m['close'] !== null                          => 'closed',
+            $today !== null && $m['end'] >= $today        => 'running',
+            $lastDay === null || $lastDay < $m['end']     => 'waiting',
+            default                                       => 'ready',
+        };
+    }
+    unset($m);
+    krsort($months);
+    return array_values($months);
+}
+
+/**
+ * Monat abschließen: Bleibt ein Rest, der sich nicht zuordnen lässt, wird er mit einer Korrekturbuchung
+ * am letzten Abgleich-Tag des Monats ausgeglichen. Danach sind Buchungen für diese Tage gesperrt.
+ * Gibt [ok, Meldung] zurück.
+ */
+function finance_close_month(array $user, int $savegameId, int $farmId, int $monthStart): array
+{
+    if (!can($user, 'finance.close') || !finance_can_view($user, $farmId) || $savegameId !== (int) current_savegame_id()) {
+        return [false, 'Diesen Monat darfst du nicht abschließen.'];
+    }
+    $month = null;
+    foreach (finance_months($savegameId, $farmId, finance_reconcile($savegameId, $farmId)) as $m) {
+        if ($m['start'] === $monthStart) {
+            $month = $m;
+        }
+    }
+    if ($month === null || $month['status'] !== 'ready') {
+        return [false, 'Der Monat lässt sich (noch) nicht abschließen. Er muss vorbei sein, und danach muss der Server einmal gespeichert haben.'];
+    }
+    $open = (int) $month['open'];
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $bookingId = null;
+        if (abs($open) >= 1) {
+            $catId = finance_category_id(CORRECTION_CODES[$open > 0 ? 'income' : 'expense']);
+            if ($catId === null) {
+                throw new RuntimeException('Buchungssatz „Korrektur“ fehlt, bitte bin/update-db.php ausführen.');
+            }
+            $bookingId = finance_book($user, $savegameId, $farmId, $catId, abs($open), $month['lock_to'],
+                'Monatsabschluss ' . $month['label'] . ': nicht zuordenbarer Rest', 'correction');
+        }
+        q('INSERT INTO finance_month_closes (savegame_id, farm_id, month_start, month_end, period, lock_from, lock_to, open_amount, booking_id, closed_by, closed_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+            $savegameId, $farmId, $month['start'], $month['end'], $month['period'], $month['lock_from'], $month['lock_to'], $open, $bookingId, (int) $user['id'], now(),
+        ]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    return [true, $bookingId !== null
+        ? 'Monat ' . $month['label'] . ' abgeschlossen, Korrektur über ' . fmt_money($open) . ' gebucht.'
+        : 'Monat ' . $month['label'] . ' abgeschlossen, es war nichts zu korrigieren.'];
+}
+
+/** Abschluss zurücknehmen (finance.manage): Korrektur wird storniert, die Tage sind wieder buchbar */
+function finance_reopen_month(array $user, int $savegameId, int $farmId, int $closeId): bool
+{
+    if (!can($user, 'finance.manage') || !finance_can_view($user, $farmId) || $savegameId !== (int) current_savegame_id()) {
+        return false;
+    }
+    $c = q('SELECT * FROM finance_month_closes WHERE id = ? AND savegame_id = ? AND farm_id = ?', [$closeId, $savegameId, $farmId])->fetch();
+    if (!$c) {
+        return false;
+    }
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        if ($c['booking_id'] !== null) {
+            q('UPDATE bookings SET cancelled_at = ?, cancelled_by = ? WHERE id = ? AND cancelled_at IS NULL', [now(), (int) $user['id'], $c['booking_id']]);
+        }
+        q('DELETE FROM finance_month_closes WHERE id = ?', [$closeId]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    return true;
+}
+
 // ---------------------------------------------------------------- Auswertung
 
 /** Gültige Buchungen je Spieltag: day => Summe */
@@ -423,7 +662,7 @@ function finance_game_open(int $savegameId, int $farmId, ?int $afterDay): array
     $cats = finance_categories();
     $out = [];
     foreach ($game as $day => $byCat) {
-        if ($afterDay !== null && $day <= $afterDay) {
+        if (($afterDay !== null && $day <= $afterDay) || finance_day_locked($savegameId, $farmId, $day)) {
             continue;
         }
         foreach ($byCat as $catId => $amount) {

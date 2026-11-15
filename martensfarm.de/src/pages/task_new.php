@@ -37,7 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $form = $data + ['status' => $status];
 } else {
-    $farmId = (int) ($contract['farm_id'] ?? $_GET['hof'] ?? $user['farm_id'] ?? 0);
+    // Aus der Fahrzeugseite heraus: Bezug und Hof vorbelegen
+    $vehicle = isset($_GET['fahrzeug']) ? vehicle_get((string) $_GET['fahrzeug']) : null;
+    $farmId = (int) ($contract['farm_id'] ?? $vehicle['farm_id'] ?? $_GET['hof'] ?? $user['farm_id'] ?? 0);
     $form = [
         'title' => $contract ? 'Lohnauftrag: ' . $contract['service'] : '',
         'description' => $contract ? 'Für ' . contract_client($contract) . ($contract['note'] ? "\n" . $contract['note'] : '') : '',
@@ -45,8 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'priority' => 2,
         'assignee_id' => 0,
         'due_day' => $contract['due_day'] ?? null,
-        'ref_type' => $contract && $contract['farmland_id'] !== null ? 'farmland' : null,
-        'ref_id' => $contract && $contract['farmland_id'] !== null ? (string) $contract['farmland_id'] : null,
+        'ref_type' => $contract && $contract['farmland_id'] !== null ? 'farmland' : ($vehicle ? 'vehicle' : null),
+        'ref_id' => $contract && $contract['farmland_id'] !== null ? (string) $contract['farmland_id'] : ($vehicle ? (string) $vehicle['unique_id'] : null),
         'status' => 'todo',
     ];
 }

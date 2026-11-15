@@ -1,5 +1,5 @@
 <?php
-/** @var array $farms @var array $cats @var array $form @var array $errors @var ?array $suggestion @var ?int $gameDay */
+/** @var array $farms @var array $cats @var array $form @var array $errors @var ?array $suggestion @var ?int $gameDay @var array $vehicleOpts */
 $groups = ['income' => 'Einnahmen', 'expense' => 'Ausgaben'];
 ?>
 <header class="page-head">
@@ -50,6 +50,16 @@ $groups = ['income' => 'Einnahmen', 'expense' => 'Ausgaben'];
             <label>Text
                 <input name="text" maxlength="255" value="<?= e($form['text']) ?>" placeholder="z. B. Weizen an die Mühle, 30.000 l">
             </label>
+            <?php if ($vehicleOpts && !$suggestion): ?>
+                <label>Fahrzeug (optional, für die Kosten je Fahrzeug)
+                    <select name="vehicle">
+                        <option value="">– kein Fahrzeug –</option>
+                        <?php foreach ($vehicleOpts as $uid => $label): ?>
+                            <option value="<?= e($uid) ?>"<?= $uid === ($form['vehicle'] ?? '') ? ' selected' : '' ?>><?= e($label) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+            <?php endif; ?>
             <div class="row">
                 <button class="btn btn-primary" type="submit">Buchen</button>
                 <a class="btn btn-ghost" href="<?= e(url('finanzen?hof=' . (int) $form['farm_id'])) ?>">Abbrechen</a>

@@ -50,6 +50,7 @@
                 <label class="check-label"><input class="check" type="checkbox" name="tasks_auto_repair" value="1"<?= setting_int('tasks_auto_repair') === 1 ? ' checked' : '' ?>> Werkstatt-Aufgaben automatisch anlegen (ab der Schwelle oben)</label>
                 <label class="check-label"><input class="check" type="checkbox" name="tasks_auto_animals" value="1"<?= setting_int('tasks_auto_animals') === 1 ? ' checked' : '' ?>> Tierpflege-Aufgaben automatisch anlegen (Futter, Wasser, Stroh, Produkte voll)</label>
                 <label class="check-label"><input class="check" type="checkbox" name="tasks_review_required" value="1"<?= setting_int('tasks_review_required') === 1 ? ' checked' : '' ?>> Fertige Aufgaben erst prüfen: Abhaken darf nur, wer Aufgaben verteilt</label>
+                <label class="check-label"><input class="check" type="checkbox" name="tasks_cleanup_done" value="1"<?= setting_int('tasks_cleanup_done') === 1 ? ' checked' : '' ?>> Erledigte Aufgaben im nächsten Spielmonat automatisch löschen (mit Kommentaren und Verlauf)</label>
                 <p class="muted small">Automatische Aufgaben schließen sich von selbst, sobald der nächste Save zeigt, dass alles wieder passt.</p>
             </div>
         </section>
