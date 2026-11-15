@@ -54,6 +54,7 @@ Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert
   - Farmland-Besitzer wechselt in `stats.xml` → Landkauf/-verkauf
   - [x] Lohnauftrag erledigt → Einnahme (und Ausgabe beim Auftraggeber, wenn es ein Hof im Spiel ist)
 - [ ] Im echten Spiel prüfen: Kommen die Arten so an, wie erwartet (`bin/check-mod-export.php`, Abschnitt Finanzen)? Passt die Summe zur Kontostandsänderung?
+- [ ] **Korrekturbuchung zum Monatsende** (vorgemerkt): Bleibt am Monatsende eine Differenz zum Kontostand, die sich nicht zuordnen lässt (z. B. Kleinbeträge, „Einkauf, ohne Angabe“), wird sie mit einer Korrekturbuchung ausgeglichen. Danach geht der Abgleich für den Monat auf 0. Offen: eigener Buchungssatz „Korrektur“ oder nur eine eigene Quelle, und ob der Monat danach als abgeschlossen gilt.
 - [ ] **Buchungen löschen** (vorgemerkt): zusätzlich zum Stornieren echtes Löschen, z. B. für Fehleingaben. Nur mit eigenem Recht (z. B. `finance.delete`), mit Rückfrage; offen: ob ein Eintrag im Verlauf bleibt, wer wann was gelöscht hat
 
 ## 3. Aufgaben ✔
