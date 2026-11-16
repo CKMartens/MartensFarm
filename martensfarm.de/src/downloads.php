@@ -9,6 +9,9 @@ declare(strict_types=1);
  * Web-Interface heraus. Die ZIPs liegen außerhalb des Document Root (var/mods/) und gehen nur mit
  * Rechteprüfung über PHP raus. Beim Hochladen liest die App die Version aus der modDesc.xml,
  * so fällt auf, wenn der Server inzwischen eine neuere Version hat.
+ *
+ * Ab 0.15: Was der Cron aus dem FTP-Eingang übernimmt, ist erst nach Freigabe durch einen Verwalter sichtbar (is_approved).
+ * Private Mods (is_private) zeigen vor dem Herunterladen einen Hinweis, der bestätigt werden muss.
  */
 
 /** Mod-Namen wie im Spiel: FS25_Irgendwas, nur Buchstaben, Ziffern, _ und - */
@@ -122,14 +125,15 @@ function mod_store_upload(array $mod, array $upload, array $user): string
     if ($orig !== '' && strcasecmp($orig, $name) !== 0 && !isset($upload['force'])) {
         throw new RuntimeException('Die Datei heißt „' . $orig . '.zip“, erwartet ist „' . $name . '.zip“. Falsche Mod erwischt?');
     }
-    return mod_store_file($mod, $tmp, (int) $user['id'], 'hochgeladen', fn(string $from, string $to): bool => move_uploaded_file($from, $to));
+    return mod_store_file($mod, $tmp, (int) $user['id'], 'hochgeladen', fn(string $from, string $to): bool => move_uploaded_file($from, $to), true, !empty($upload['private']));
 }
 
 /**
  * Gemeinsamer Teil von Upload und FTP-Eingang: ZIP prüfen, nach var/mods/ verschieben, in server_mods eintragen.
  * $move verschiebt die Quelldatei an den Zielpfad (move_uploaded_file bzw. rename).
+ * $approved = false: erst nach Freigabe sichtbar. $private = null lässt die Markierung, wie sie ist.
  */
-function mod_store_file(array $mod, string $source, ?int $userId, string $verb, callable $move): string
+function mod_store_file(array $mod, string $source, ?int $userId, string $verb, callable $move, bool $approved = true, ?bool $private = null): string
 {
     $name = (string) $mod['mod_name'];
     $size = (int) filesize($source);
@@ -144,11 +148,15 @@ function mod_store_file(array $mod, string $source, ?int $userId, string $verb, 
     }
     @chmod($target, 0640);
 
-    q('UPDATE server_mods SET file_version = ?, file_sha256 = ?, file_size = ?, file_uploaded_at = ?, file_uploaded_by = ? WHERE mod_name = ?',
-        [$info['version'], $sha, $size, now(), $userId, $name]);
+    q('UPDATE server_mods SET file_version = ?, file_sha256 = ?, file_size = ?, file_uploaded_at = ?, file_uploaded_by = ?, is_approved = ?,
+              is_private = COALESCE(?, is_private) WHERE mod_name = ?',
+        [$info['version'], $sha, $size, now(), $userId, $approved ? 1 : 0, $private === null ? null : (int) $private, $name]);
 
     $msg = $name . '.zip ' . $verb . ' (' . fmt_num($size / 1048576, 1) . ' MB';
     $msg .= $info['version'] ? ', Version ' . $info['version'] . ')' : ', Version unbekannt)';
+    if (!$approved) {
+        $msg .= ', wartet auf Freigabe';
+    }
     if ($info['version'] && $mod['version'] && mod_version_norm($info['version']) !== mod_version_norm((string) $mod['version'])) {
         return $msg . '. Achtung: Auf dem Server läuft Version ' . $mod['version'] . '.';
     }
@@ -225,8 +233,11 @@ function mods_inbox_path(string $file): ?string
     return is_file($path) && !is_link($path) ? $path : null;
 }
 
-/** Eine Datei aus dem Eingang einer Mod zuordnen und übernehmen. Gibt eine Meldung zurück oder wirft. */
-function mod_take_from_inbox(array $mod, string $path, ?int $userId): string
+/**
+ * Eine Datei aus dem Eingang einer Mod zuordnen und übernehmen. Gibt eine Meldung zurück oder wirft.
+ * Übernimmt ein Verwalter von Hand, ist sie gleich freigegeben. Der Cron übernimmt nur, freigeben muss ein Verwalter.
+ */
+function mod_take_from_inbox(array $mod, string $path, ?int $userId, bool $approved = true, ?bool $private = null): string
 {
     clearstatcache(true, $path);
     if ((int) filemtime($path) > time() - MODS_INBOX_SETTLE_S) {
@@ -243,7 +254,7 @@ function mod_take_from_inbox(array $mod, string $path, ?int $userId): string
         // Eingang und Ablage auf verschiedenen Dateisystemen: kopieren, dann löschen
         return @copy($from, $to) && @unlink($from);
     };
-    return mod_store_file($mod, $path, $userId, 'aus dem FTP-Eingang übernommen', $move);
+    return mod_store_file($mod, $path, $userId, 'aus dem FTP-Eingang übernommen', $move, $approved, $private);
 }
 
 function mod_inbox_delete(string $path): void
@@ -271,7 +282,7 @@ function mods_inbox_auto_import(): array
         }
         $mod = q('SELECT * FROM server_mods WHERE mod_name = ?', [$f['mod']['mod_name']])->fetch();
         try {
-            $log[] = 'Downloads: ' . mod_take_from_inbox($mod, $f['path'], null);
+            $log[] = 'Downloads: ' . mod_take_from_inbox($mod, $f['path'], null, false);
         } catch (RuntimeException $e) {
             // bleibt im Eingang, der Verwalter sieht den Fehler unter /downloads. Pro Datei-Stand nur einmal loggen.
             $key = sha1($f['file'] . ':' . $f['mtime'] . ':' . $f['size']);
@@ -289,6 +300,19 @@ function mod_delete_file(string $modName): void
 {
     @unlink(mod_file_path($modName));
     q('UPDATE server_mods SET file_version = NULL, file_sha256 = NULL, file_size = NULL, file_uploaded_at = NULL, file_uploaded_by = NULL WHERE mod_name = ?', [$modName]);
+}
+
+/** Mods, die der Cron aus dem FTP-Eingang übernommen hat und die noch auf Freigabe warten */
+function mods_pending(): array
+{
+    $out = [];
+    foreach (q('SELECT * FROM server_mods WHERE is_approved = 0 AND file_sha256 IS NOT NULL ORDER BY file_uploaded_at DESC')->fetchAll() as $m) {
+        $m['state'] = mod_file_state($m);
+        if ($m['state'] !== 'missing') {
+            $out[] = $m;
+        }
+    }
+    return $out;
 }
 
 /** Status einer Mod für die Liste: 'ok', 'outdated', 'missing' */

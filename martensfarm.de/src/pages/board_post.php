@@ -50,6 +50,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             redirect($self . '#antworten');
 
+        case 'dismiss':
+            // Vom Dashboard: „Gelesen, ausblenden“. Gilt nur für diesen Nutzer.
+            if (board_can_dismiss($user, $post)) {
+                board_dismiss($user, $id);
+                flash('success', 'Ausgeblendet. Unter Nachrichten steht sie weiterhin.');
+            }
+            redirect(($_POST['back'] ?? '') === 'dashboard' ? '' : $self);
+
+        case 'undismiss':
+            q('DELETE FROM board_dismissals WHERE user_id = ? AND post_id = ?', [$uid, $id]);
+            flash('success', 'Die Nachricht steht wieder auf deinem Dashboard.');
+            redirect($self);
+
         case 'pin':
             if ($post['kind'] === 'announcement' && can($user, 'board.announce')) {
                 q('UPDATE board_posts SET is_pinned = 1 - is_pinned WHERE id = ?', [$id]);
@@ -75,9 +88,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             [$data, $errors] = board_form_read($_POST + ['ref' => $post['ref_type'] ? $post['ref_type'] . ':' . $post['ref_id'] : ''], $user, $post);
             if (!$errors) {
-                q('UPDATE board_posts SET title = ?, body = ?, is_pinned = ?, expires_at = ?, mod_url = ?, updated_at = ? WHERE id = ?', [
+                q('UPDATE board_posts SET title = ?, body = ?, is_pinned = ?, is_sticky = ?, expires_at = ?, mod_url = ?, updated_at = ? WHERE id = ?', [
                     $data['title'], $data['body'] !== '' ? $data['body'] : null,
-                    $post['kind'] === 'announcement' ? $data['is_pinned'] : 0, $data['expires_at'], $data['mod_url'], now(), $id,
+                    $post['kind'] === 'announcement' ? $data['is_pinned'] : 0, $post['kind'] === 'announcement' ? $data['is_sticky'] : 0,
+                    $data['expires_at'], $data['mod_url'], now(), $id,
                 ]);
                 flash('success', 'Gespeichert.');
                 redirect($self);
@@ -88,13 +102,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $form ??= [
-    'title' => $post['title'], 'body' => (string) $post['body'], 'is_pinned' => (int) $post['is_pinned'],
+    'title' => $post['title'], 'body' => (string) $post['body'], 'is_pinned' => (int) $post['is_pinned'], 'is_sticky' => (int) $post['is_sticky'],
     'expires_at' => (string) $post['expires_at'], 'mod_url' => (string) $post['mod_url'],
 ];
 $replies = board_replies($id, $canModerate);
 $serverMods = $post['kind'] === 'mod_wish' && $canModerate
     ? q('SELECT mod_name, title FROM server_mods ORDER BY on_server DESC, title')->fetchAll(PDO::FETCH_KEY_PAIR) : [];
+$dismissed = (bool) q('SELECT 1 FROM board_dismissals WHERE user_id = ? AND post_id = ?', [(int) $user['id'], $id])->fetchColumn();
 $installedMod = $post['mod_name'] !== null ? (q('SELECT * FROM server_mods WHERE mod_name = ?', [$post['mod_name']])->fetch() ?: null) : null;
 
-render('board_post', compact('user', 'post', 'replies', 'canModerate', 'errors', 'form', 'serverMods', 'installedMod')
+render('board_post', compact('user', 'post', 'replies', 'canModerate', 'errors', 'form', 'serverMods', 'installedMod', 'dismissed')
     + ['title' => $post['title'], 'nav' => 'nachrichten', 'ref' => board_ref($post), 'openEdit' => (bool) $errors]);

@@ -164,7 +164,7 @@ function board_form_read(array $post, array $user, ?array $existing = null): arr
     $body = trim(str_replace("\r\n", "\n", (string) ($post['body'] ?? '')));
     $data = [
         'kind' => $kind, 'title' => $title, 'body' => $body, 'ref_type' => null, 'ref_id' => null,
-        'is_pinned' => 0, 'expires_at' => null, 'mod_url' => null,
+        'is_pinned' => 0, 'is_sticky' => 0, 'expires_at' => null, 'mod_url' => null,
     ];
     if ($title === '' || mb_strlen($title) > 150) {
         $errors[] = 'Bitte einen Titel angeben (höchstens 150 Zeichen).';
@@ -177,6 +177,8 @@ function board_form_read(array $post, array $user, ?array $existing = null): arr
     }
     if ($kind === 'announcement') {
         $data['is_pinned'] = isset($post['is_pinned']) ? 1 : 0;
+        // Nicht ausblendbar gilt nur fürs Dashboard, also nur zusammen mit „anheften“
+        $data['is_sticky'] = $data['is_pinned'] && isset($post['is_sticky']) ? 1 : 0;
         $exp = trim((string) ($post['expires_at'] ?? ''));
         if ($exp !== '') {
             $d = DateTimeImmutable::createFromFormat('!Y-m-d', $exp);
@@ -216,12 +218,38 @@ function board_form_read(array $post, array $user, ?array $existing = null): arr
 function board_create(array $user, array $d): int
 {
     $now = now();
-    q('INSERT INTO board_posts (kind, title, body, ref_type, ref_id, is_pinned, expires_at, mod_url, mod_status, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
-        $d['kind'], $d['title'], $d['body'] !== '' ? $d['body'] : null, $d['ref_type'], $d['ref_id'], $d['is_pinned'], $d['expires_at'],
+    q('INSERT INTO board_posts (kind, title, body, ref_type, ref_id, is_pinned, is_sticky, expires_at, mod_url, mod_status, created_by, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+        $d['kind'], $d['title'], $d['body'] !== '' ? $d['body'] : null, $d['ref_type'], $d['ref_id'], $d['is_pinned'], $d['is_sticky'], $d['expires_at'],
         $d['mod_url'], $d['kind'] === 'mod_wish' ? 'open' : null, (int) $user['id'], $now, $now,
     ]);
     return (int) db()->lastInsertId();
+}
+
+// ---------------------------------------------------------------- Dashboard
+
+/**
+ * Nachrichten fürs Dashboard: angeheftete Ankündigungen, die noch laufen (Anzeigedatum nicht vorbei).
+ * Was der Nutzer als gelesen ausgeblendet hat, fehlt, außer der Beitrag ist „nicht ausblendbar“.
+ */
+function board_dashboard_posts(array $user, int $limit = 6): array
+{
+    return q('SELECT p.*, u.nickname FROM board_posts p LEFT JOIN users u ON u.id = p.created_by
+              WHERE p.kind = \'announcement\' AND p.is_pinned = 1 AND p.hidden_at IS NULL
+                AND (p.expires_at IS NULL OR p.expires_at >= CURDATE())
+                AND (p.is_sticky = 1 OR NOT EXISTS (SELECT 1 FROM board_dismissals d WHERE d.post_id = p.id AND d.user_id = ?))
+              ORDER BY p.is_sticky DESC, p.created_at DESC LIMIT ' . max(1, $limit), [(int) $user['id']])->fetchAll();
+}
+
+/** Darf der Nutzer die Nachricht auf seinem Dashboard ausblenden? */
+function board_can_dismiss(?array $user, array $p): bool
+{
+    return $user !== null && $p['kind'] === 'announcement' && (int) $p['is_sticky'] === 0;
+}
+
+function board_dismiss(array $user, int $postId): void
+{
+    q('INSERT IGNORE INTO board_dismissals (user_id, post_id, dismissed_at) VALUES (?, ?, ?)', [(int) $user['id'], $postId, now()]);
 }
 
 // ---------------------------------------------------------------- Ungelesen

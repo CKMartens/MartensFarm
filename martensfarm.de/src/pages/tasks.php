@@ -33,6 +33,14 @@ if ($farmId !== 0 && !isset($farms[$farmId])) {
     $farmId = 0;
 }
 $mine = isset($_GET['meine']) ? (int) $user['id'] : 0;
+
+// Archiv: einfache Liste statt Board
+if (isset($_GET['archiv'])) {
+    render('tasks_archive', ['user' => $user, 'farms' => $farms, 'farmId' => $farmId, 'tasks' => tasks_archived($farmId), 'names' => user_names()]
+        + ['title' => 'Aufgaben-Archiv', 'nav' => 'aufgaben']);
+    return;
+}
+
 $columns = tasks_for_board($farmId, $mine);
 $names = user_names();
 $query = http_build_query(array_filter(['hof' => $farmId ?: null, 'meine' => $mine ? 1 : null]));

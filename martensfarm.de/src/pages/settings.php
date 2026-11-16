@@ -5,10 +5,11 @@ declare(strict_types=1);
 /** Zahlen-Einstellungen: Name => [Label, min, max, Einheit] */
 const NUMBER_SETTINGS = [
     'maintenance_threshold_pct' => ['Werkstatt ab Schaden', 1, 100, '%'],
-    'food_min_days'             => ['Hinweis, wenn Futter nur noch reicht für', 0, 30, 'Tage'],
-    'food_min_pct'              => ['… oder (wenn der Verbrauch unbekannt ist) Futter unter', 0, 100, '%'],
+    'food_min_pct'              => ['Futter unter (alle Sorten zusammen: TMR, Heu, Gras …)', 0, 100, '%'],
+    'food_min_days'             => ['… oder Futter reicht nur noch für', 0, 30, 'Tage'],
     'water_min_pct'             => ['Wasser unter', 0, 100, '%'],
     'straw_min_pct'             => ['Stroh unter', 0, 100, '%'],
+    'health_min_pct'            => ['Gesundheit der Tiere unter', 0, 100, '%'],
     'product_full_pct'          => ['Milch, Gülle, Mist usw. fast voll ab', 1, 100, '%'],
 ];
 
@@ -99,6 +100,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
     setting_set('hide_empty_pens', isset($_POST['hide_empty_pens']) ? '1' : '0');
+    // Ställe ohne Gesundheits-Hinweis: nur Schlüssel, die es im aktuellen Savegame gibt, plus die aus anderen Savegames behalten
+    $penKeys = q('SELECT pen_key FROM husbandries WHERE savegame_id <=> ?', [$sgId])->fetchAll(PDO::FETCH_COLUMN);
+    $keep = array_values(array_diff(pens_no_health(), $penKeys));
+    $chosen = array_values(array_intersect($penKeys, array_map('strval', (array) ($_POST['no_health'] ?? []))));
+    setting_set('pens_no_health', json_encode(array_values(array_unique(array_merge($keep, $chosen)))));
     foreach (['tasks_auto_repair', 'tasks_auto_animals', 'tasks_review_required', 'tasks_cleanup_done'] as $key) {
         setting_set($key, isset($_POST[$key]) ? '1' : '0');
     }
@@ -115,10 +121,14 @@ foreach (['husbandries' => 'pens', 'vehicles' => 'vehicles'] as $table => $label
     }
 }
 
+$pens = q('SELECT pen_key, farm_id, name, animal_type, animals, health FROM husbandries WHERE savegame_id <=> ? AND removed_at IS NULL ORDER BY farm_id, name', [$sgId])->fetchAll();
+$pens = array_values(array_filter($pens, fn($p) => farm_is_active((int) $p['farm_id'])));
+$noHealth = pens_no_health();
+
 $savegames = q('SELECT s.*, (SELECT SUM(money) FROM farms_archive a WHERE a.savegame_id = s.id) AS archived_money
                 FROM savegames s ORDER BY s.last_seen_at DESC')->fetchAll();
 $mfInfo = mf_info();
 $gs = ['source' => gs_source(), 'base_url' => gs_base_url(), 'masked' => gs_mask(gs_code())];
 $mapName = q('SELECT map_name FROM server_snapshots WHERE ok = 1 ORDER BY id DESC LIMIT 1')->fetchColumn() ?: null;
 
-render('settings', compact('user', 'byId', 'activeIds', 'counts', 'savegames', 'sgId', 'mfInfo', 'gs', 'mapName') + ['title' => 'Einstellungen', 'nav' => 'einstellungen']);
+render('settings', compact('user', 'byId', 'activeIds', 'counts', 'savegames', 'sgId', 'mfInfo', 'gs', 'mapName', 'pens', 'noHealth') + ['title' => 'Einstellungen', 'nav' => 'einstellungen']);

@@ -676,8 +676,10 @@ function finance_game_open(int $savegameId, int $farmId, ?int $afterDay): array
         return [];
     }
     $stats = game_stats_by_day($savegameId, $farmId);
+    // Tageskorrekturen (ref_type fin_cat) zählen zu dem Buchungssatz, den sie ausgleichen
     $booked = [];
-    foreach (q('SELECT game_day, category_id, SUM(amount) FROM bookings WHERE savegame_id = ? AND farm_id = ? AND cancelled_at IS NULL GROUP BY game_day, category_id',
+    foreach (q('SELECT game_day, IF(ref_type = \'fin_cat\', CAST(ref_id AS UNSIGNED), category_id) AS cat, SUM(amount) FROM bookings
+                WHERE savegame_id = ? AND farm_id = ? AND cancelled_at IS NULL GROUP BY game_day, cat',
         [$savegameId, $farmId])->fetchAll(PDO::FETCH_NUM) as [$d, $c, $sum]) {
         $booked[(int) $d][(int) $c] = (int) $sum;
     }
@@ -704,6 +706,39 @@ function finance_game_open(int $savegameId, int $farmId, ?int $afterDay): array
     }
     usort($out, fn($a, $b) => [$b['day'], $a['category_id']] <=> [$a['day'], $b['category_id']]);
     return $out;
+}
+
+/**
+ * Zeilen eines Spieltags, die sich per Tageskorrektur ausgleichen lassen: Es wurde schon etwas gebucht,
+ * aber die Summe weicht vom Spiel ab (typisch: Tippfehler bei einzeln gebuchten Lohnaufträgen).
+ * Ganz ungebuchte Zeilen bleiben außen vor, die gehören übernommen und nicht wegkorrigiert.
+ */
+function finance_day_correctable(array $gameOpen, int $day): array
+{
+    return array_values(array_filter($gameOpen, fn($r) => $r['day'] === $day && $r['booked'] !== 0 && abs($r['open']) >= 1));
+}
+
+/**
+ * Tageskorrektur: Für jede abweichende Zeile des Tages eine Korrekturbuchung über die Differenz.
+ * Sie hängt am ausgeglichenen Buchungssatz (ref_type fin_cat), damit die Zeile aus den Vorschlägen verschwindet.
+ * Stornieren holt die Differenz wieder zurück. Gibt [Anzahl, Summe] zurück.
+ */
+function finance_day_correct(array $user, int $savegameId, int $farmId, int $day, ?int $afterDay): array
+{
+    $cats = finance_categories();
+    $n = 0;
+    $sum = 0;
+    foreach (finance_day_correctable(finance_game_open($savegameId, $farmId, $afterDay), $day) as $r) {
+        $catId = finance_category_id(CORRECTION_CODES[$r['open'] > 0 ? 'income' : 'expense']);
+        if ($catId === null) {
+            throw new RuntimeException('Buchungssatz „Korrektur“ fehlt, bitte bin/update-db.php ausführen.');
+        }
+        $text = 'Tageskorrektur ' . ($cats[$r['category_id']]['name'] ?? '?') . ': laut Spiel ' . fmt_money($r['game']) . ', gebucht ' . fmt_money($r['booked']);
+        finance_book($user, $savegameId, $farmId, $catId, abs($r['open']), $day, $text, 'day_correction', 'fin_cat', (string) $r['category_id']);
+        $n++;
+        $sum += $r['open'];
+    }
+    return [$n, $sum];
 }
 
 /** Offener Betrag für einen Hof (für Dashboard und Übersicht) */

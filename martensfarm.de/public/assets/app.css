@@ -279,3 +279,17 @@ p.spaced { margin-top: 1.2rem; }
 /* Stornierte Zeilen blass, ihre Knöpfe aber nicht (die bleiben bedienbar) */
 .table tr.inactive td.actions { opacity: 1; }
 .app-version { color: var(--muted); font-size: .75rem; text-align: center; margin-top: .4rem; }
+
+/* Dashboard-Nachrichten (0.15): deutlich sichtbar über den Kacheln */
+.row.wrap { flex-wrap: wrap; }
+.dash-msgs { display: grid; gap: .6rem; margin-bottom: 1.2rem; }
+.dash-msg { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap;
+    padding: .9rem 1.1rem; border-radius: var(--radius); background: rgba(74,144,217,.12); border: 1px solid #4a90d9; border-left: 6px solid #4a90d9; }
+.dash-msg.sticky { background: rgba(240,180,41,.12); border-color: var(--warn); }
+.dash-msg.animal { background: rgba(239,83,80,.10); border-color: var(--bad); }
+.dash-msg h2 { margin: 0 0 .3rem; font-size: 1.15rem; }
+.dash-msg h2 a { color: var(--text); }
+.dash-msg p { margin: .2rem 0; }
+.dash-msg-text { flex: 1 1 22rem; min-width: 0; overflow-wrap: anywhere; }
+.dash-msg-actions { flex: 0 0 auto; }
+.day-correct td { border-top: 0; background: rgba(240,180,41,.06); }

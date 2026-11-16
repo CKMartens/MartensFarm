@@ -1,6 +1,6 @@
 <?php
 /** @var array $user @var array $post @var array $replies @var bool $canModerate @var array $errors @var array $form @var array $serverMods
- *  @var ?array $installedMod @var ?array $ref @var bool $openEdit */
+ *  @var ?array $installedMod @var ?array $ref @var bool $openEdit @var bool $dismissed */
 $p = $post;
 [$kLabel, $kIcon] = BOARD_KINDS[$p['kind']] ?? ['?', '•'];
 $pinned = (int) $p['is_pinned'] === 1 && !board_expired($p);
@@ -13,6 +13,7 @@ $hidden = $p['hidden_at'] !== null;
         <p class="muted">
             <?= e($kLabel) ?> von <?= e($p['nickname'] ?? '–') ?> · <?= e(fmt_datetime($p['created_at'])) ?>
             <?= $pinned ? ' <span class="badge warn">📌 angeheftet</span>' : '' ?>
+            <?= $pinned && (int) $p['is_sticky'] === 1 ? ' <span class="badge bad">nicht ausblendbar</span>' : '' ?>
             <?= $p['expires_at'] !== null ? ' <span class="badge' . (board_expired($p) ? '' : ' ok') . '">' . (board_expired($p) ? 'abgelaufen' : 'bis ' . e(date('d.m.Y', strtotime((string) $p['expires_at'])))) . '</span>' : '' ?>
             <?= $hidden ? ' <span class="badge">ausgeblendet</span>' : '' ?>
         </p>
@@ -22,6 +23,12 @@ $hidden = $p['hidden_at'] !== null;
             <form method="post" action="<?= e(url('nachrichten/beitrag')) ?>">
                 <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int) $p['id'] ?>"><input type="hidden" name="action" value="pin">
                 <button class="btn btn-ghost btn-sm" type="submit"><?= (int) $p['is_pinned'] === 1 ? 'Nicht mehr anheften' : 'Anheften' ?></button>
+            </form>
+        <?php endif; ?>
+        <?php if ($pinned && !$hidden && board_can_dismiss($user, $p)): ?>
+            <form method="post" action="<?= e(url('nachrichten/beitrag')) ?>">
+                <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int) $p['id'] ?>"><input type="hidden" name="action" value="<?= $dismissed ? 'undismiss' : 'dismiss' ?>">
+                <button class="btn btn-ghost btn-sm" type="submit"><?= $dismissed ? 'Wieder aufs Dashboard' : 'Vom Dashboard nehmen' ?></button>
             </form>
         <?php endif; ?>
         <?php if (board_can_hide($user, $p)): ?>
@@ -122,8 +129,9 @@ $hidden = $p['hidden_at'] !== null;
                     <label>Link <input name="mod_url" type="url" maxlength="255" value="<?= e($form['mod_url']) ?>"></label>
                 <?php elseif ($p['kind'] === 'announcement'): ?>
                     <div class="row">
-                        <label class="check-label"><input class="check" type="checkbox" name="is_pinned" value="1"<?= !empty($form['is_pinned']) ? ' checked' : '' ?>> oben anheften</label>
-                        <label>bis einschließlich <input type="date" name="expires_at" value="<?= e($form['expires_at']) ?>"></label>
+                        <label class="check-label"><input class="check" type="checkbox" name="is_pinned" value="1"<?= !empty($form['is_pinned']) ? ' checked' : '' ?>> anheften (oben und auf dem Dashboard)</label>
+                        <label class="check-label"><input class="check" type="checkbox" name="is_sticky" value="1"<?= !empty($form['is_sticky']) ? ' checked' : '' ?>> nicht ausblendbar</label>
+                        <label>Anzeigen bis einschließlich <input type="date" name="expires_at" value="<?= e($form['expires_at']) ?>"></label>
                     </div>
                 <?php endif; ?>
                 <div><button class="btn btn-primary" type="submit">Speichern</button></div>

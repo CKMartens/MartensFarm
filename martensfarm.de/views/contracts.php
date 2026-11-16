@@ -1,14 +1,19 @@
 <?php
-/** @var array $user @var array $contracts @var bool $all @var array $suggestions */
+/** @var array $user @var array $contracts @var bool $all @var bool $archived @var array $suggestions */
 $badge = ['open' => '', 'accepted' => 'warn', 'done' => 'ok', 'cancelled' => 'bad'];
 ?>
 <header class="page-head">
     <div>
-        <h1>Lohnaufträge</h1>
+        <h1>Lohnaufträge<?= $archived ? ' · Archiv' : '' ?></h1>
         <p class="muted">Arbeit für andere Höfe oder Externe: Auftrag anlegen, Aufgaben daraus machen, nach Abschluss die Einnahme buchen.</p>
     </div>
     <div class="btn-row">
-        <a class="btn btn-ghost" href="<?= e(url('lohnauftraege' . ($all ? '' : '?alle=1'))) ?>"><?= $all ? 'Nur aktuelle' : 'Alle anzeigen' ?></a>
+        <?php if ($archived): ?>
+            <a class="btn btn-ghost" href="<?= e(url('lohnauftraege')) ?>">← Zurück zur Liste</a>
+        <?php else: ?>
+            <a class="btn btn-ghost" href="<?= e(url('lohnauftraege' . ($all ? '' : '?alle=1'))) ?>"><?= $all ? 'Nur aktuelle' : 'Alle anzeigen' ?></a>
+            <a class="btn btn-ghost" href="<?= e(url('lohnauftraege?archiv=1')) ?>">🗄 Archiv</a>
+        <?php endif; ?>
         <?php if (can($user, 'contracts.manage')): ?>
             <a class="btn btn-primary" href="<?= e(url('lohnauftraege/neu')) ?>">+ Neuer Lohnauftrag</a>
         <?php endif; ?>
@@ -35,7 +40,7 @@ $badge = ['open' => '', 'accepted' => 'warn', 'done' => 'ok', 'cancelled' => 'ba
                         <?php if ($s): ?><br><span class="small <?= $s['status'] === 'booked' ? 'ok' : 'warn' ?>"><?= $s['status'] === 'booked' ? 'gebucht' : ($s['status'] === 'open' ? 'noch nicht gebucht' : 'Vorschlag verworfen') ?></span><?php endif; ?></td>
                 </tr>
             <?php endforeach; ?>
-            <?php if (!$contracts): ?><tr><td colspan="7" class="muted">Noch keine Lohnaufträge<?= $all ? '' : ' in den letzten 30 Tagen' ?>.</td></tr><?php endif; ?>
+            <?php if (!$contracts): ?><tr><td colspan="7" class="muted"><?= $archived ? 'Das Archiv ist leer.' : 'Noch keine Lohnaufträge' . ($all ? '' : ' in den letzten 30 Tagen') . '.' ?></td></tr><?php endif; ?>
             </tbody>
         </table>
     </div>

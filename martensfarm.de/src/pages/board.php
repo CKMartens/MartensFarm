@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $ref = (string) ($_GET['bezug'] ?? '');
     $form = [
         'kind' => $ref !== '' ? 'note' : (isset($kinds[$kind]) ? $kind : (string) array_key_first($kinds)),
-        'title' => '', 'body' => '', 'ref' => $ref, 'is_pinned' => 0, 'expires_at' => '', 'mod_url' => '',
+        'title' => '', 'body' => '', 'ref' => $ref, 'is_pinned' => 0, 'is_sticky' => 0, 'expires_at' => '', 'mod_url' => '',
     ];
 }
 

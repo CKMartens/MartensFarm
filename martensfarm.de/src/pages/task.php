@@ -68,6 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('success', 'Aufgabe „' . $task['title'] . '“ gelöscht.');
             redirect('aufgaben' . ($task['farm_id'] ? '?hof=' . (int) $task['farm_id'] : ''));
 
+        case 'archive':
+        case 'unarchive':
+            if (task_can_archive($user, $task)) {
+                task_archive($task, $user, $action === 'archive');
+                flash('success', $action === 'archive' ? 'Aufgabe archiviert.' : 'Aufgabe ist wieder auf dem Board.');
+            }
+            redirect($self);
+
         case 'comment':
             $text = trim((string) ($_POST['text'] ?? ''));
             if (task_can_comment($user) && $text !== '' && mb_strlen($text) <= 1000) {

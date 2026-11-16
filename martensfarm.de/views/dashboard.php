@@ -47,6 +47,48 @@ if (count($moneyHistory) >= 2) {
     <?php endif; ?>
 </header>
 
+<?php if ($boardPinned || $penAlerts): ?>
+    <section class="dash-msgs" aria-label="Nachrichten">
+        <?php foreach ($boardPinned as $bp): $sticky = (int) $bp['is_sticky'] === 1;
+            $body = trim((string) $bp['body']);
+            $short = mb_strlen($body) > 400 ? mb_substr($body, 0, 400) . ' …' : $body; ?>
+            <article class="dash-msg<?= $sticky ? ' sticky' : '' ?>">
+                <div class="dash-msg-text">
+                    <h2>📣 <a href="<?= e(url('nachrichten/beitrag?id=' . (int) $bp['id'])) ?>"><?= e($bp['title']) ?></a></h2>
+                    <?php if ($short !== ''): ?><p class="pre-line"><?= e($short) ?></p><?php endif; ?>
+                    <p class="muted small"><?= e($bp['nickname'] ?? '–') ?> · <?= e(fmt_datetime($bp['created_at'])) ?>
+                        <?= $bp['expires_at'] !== null ? ' · bis ' . e(date('d.m.Y', strtotime((string) $bp['expires_at']))) : '' ?></p>
+                </div>
+                <div class="dash-msg-actions">
+                    <?php if (board_can_dismiss($user, $bp)): ?>
+                        <form method="post" action="<?= e(url('nachrichten/beitrag')) ?>">
+                            <?= csrf_field() ?>
+                            <input type="hidden" name="id" value="<?= (int) $bp['id'] ?>">
+                            <input type="hidden" name="action" value="dismiss">
+                            <input type="hidden" name="back" value="dashboard">
+                            <button class="btn btn-ghost btn-sm" type="submit" title="Nur für dich, unter Nachrichten bleibt sie stehen">Gelesen, ausblenden</button>
+                        </form>
+                    <?php else: ?>
+                        <span class="badge bad" title="Bleibt stehen, bis sie abgeheftet wird oder das Anzeigedatum vorbei ist">📌 wichtig</span>
+                    <?php endif; ?>
+                </div>
+            </article>
+        <?php endforeach; ?>
+        <?php if ($penAlerts): ?>
+            <article class="dash-msg animal">
+                <div class="dash-msg-text">
+                    <h2>🐄 <a href="<?= e(url('tiere?hof=' . (int) $farmId)) ?>">Tiere brauchen Aufmerksamkeit</a></h2>
+                    <?php foreach ($penAlerts as $p): ?>
+                        <p><strong><?= e($p['name']) ?></strong> <span class="muted small">(<?= e(animal_name($p['animal_type'])) ?>)</span>
+                            <?php foreach ($p['alerts'] as $a): ?><span class="badge <?= e($a['level']) ?>"><?= e($a['text']) ?></span> <?php endforeach; ?></p>
+                    <?php endforeach; ?>
+                </div>
+                <div class="dash-msg-actions"><span class="muted small">Verschwindet nach dem nächsten Save, wenn alles passt</span></div>
+            </article>
+        <?php endif; ?>
+    </section>
+<?php endif; ?>
+
 <div class="alert alert-info small">
     Kontostände, Fahrzeuge, Tiere und Lager kommen aus dem Spielstand und werden nur aktualisiert, wenn der Server speichert.
     Sie können deshalb bis zu 60 Minuten hinterherhinken.<?php if ($mfInfo): ?> Letzter Save: <strong><?= e(fmt_datetime($mfInfo['written_at'])) ?></strong> (<?= e(fmt_ago($mfInfo['written_at'])) ?>).<?php endif; ?>
@@ -89,11 +131,6 @@ if (count($moneyHistory) >= 2) {
         <div class="tile-sub"><?= $boardUnread ? 'Beiträge und Antworten seit deinem letzten Besuch' : 'Alles gelesen' ?></div>
     </a>
 </section>
-
-<?php foreach ($boardPinned as $bp): ?>
-    <div class="alert alert-info">📣 <a href="<?= e(url('nachrichten/beitrag?id=' . (int) $bp['id'])) ?>"><strong><?= e($bp['title']) ?></strong></a>
-        <span class="small muted">· <?= e(fmt_datetime($bp['created_at'])) ?></span></div>
-<?php endforeach; ?>
 
 <div class="grid-2">
     <section class="card">
