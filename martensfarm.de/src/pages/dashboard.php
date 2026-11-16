@@ -34,7 +34,7 @@ if ($sgId !== null && finance_can_view($user, (int) $farmId)) {
 
 // Aufgaben: meine offenen und wie viele auf dem Board noch frei sind
 $myTasks = tasks_open_for_user((int) $user['id']);
-$freeTasks = (int) q('SELECT COUNT(*) FROM tasks WHERE savegame_id <=> ? AND assignee_id IS NULL AND status IN (\'todo\', \'doing\') AND (farm_id = ? OR farm_id IS NULL)', [$sgId, $farmId])->fetchColumn();
+$freeTasks = (int) q('SELECT COUNT(*) FROM tasks WHERE savegame_id <=> ? AND assignee_id IS NULL AND ai_helper = 0 AND status IN (\'todo\', \'doing\') AND (farm_id = ? OR farm_id IS NULL)', [$sgId, $farmId])->fetchColumn();
 
 // Nachrichten: Ungelesene und angeheftete Ankündigungen (ohne die, die der Nutzer schon weggeklickt hat)
 $boardUnread = board_unread_count($user);

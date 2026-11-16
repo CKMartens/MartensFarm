@@ -21,6 +21,7 @@ Stand: 16.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | 6 | Downloadverwaltung | erledigt (0.6) |
 | 7 | Nachrichtenboard: Mod-Wünsche, Adminbenachrichtigungen, Hinweise zu Aufgaben | erledigt (0.11) |
 | 8 | Anpassungen nach dem Spieleabend 16.11. (siehe unten) | erledigt (0.15) |
+| 9 | Lohnauftrag an KI-Helfer, **Release-Kandidat 1.0 RC** – ab jetzt Testphase | erledigt (1.0 RC) |
 
 ---
 
@@ -85,7 +86,7 @@ Seite `/lohnauftraege`, eigenes Recht *Lohnaufträge verwalten*.
 - [x] Auftraggeber (Hof oder extern), Leistung, Feld, vereinbarter Preis, Fälligkeit, Status (angefragt, angenommen, erledigt, storniert)
 - [x] erzeugt eine oder mehrere **Aufgaben**; sind alle erledigt, ist der Auftrag erledigt
 - [x] erzeugt nach Abschluss einen **Buchungsvorschlag** (Einnahme, beim Hof-Auftraggeber zusätzlich Ausgabe)
-- [ ] Auftrag als von KI-Helfern abzuarbeiten zuweisen
+- [x] Auftrag als von KI-Helfern abzuarbeiten zuweisen (1.0 RC): Haken am Lohnauftrag, Aufgaben stehen als „🤖 KI-Helfer“ auf dem Board; auch einzelne Aufgaben zuweisbar
 - [ ] später Grundlage für die **Rechnung zwischen Höfen** (Phase 3)
 
 ## 4. Fahrzeugverwaltung

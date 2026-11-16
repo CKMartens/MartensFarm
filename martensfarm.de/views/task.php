@@ -39,7 +39,7 @@ $closed = in_array($task['status'], ['done', 'dropped'], true);
         <h2>Worum geht's</h2>
         <?php if ($task['description']): ?><p class="pre-line"><?= e($task['description']) ?></p><?php else: ?><p class="muted">Keine Beschreibung.</p><?php endif; ?>
         <table class="table compact">
-            <tr><th>Zugewiesen</th><td><?= $task['assignee_id'] !== null ? e($names[(int) $task['assignee_id']] ?? '?') : '<span class="muted">offen</span>' ?></td></tr>
+            <tr><th>Zugewiesen</th><td><?= $task['assignee_id'] !== null || (int) $task['ai_helper'] === 1 ? e(task_assignee_label($task, $names)) : '<span class="muted">offen</span>' ?></td></tr>
             <tr><th>Fällig</th><td class="<?= $overdue ? 'bad' : '' ?>"><?= $task['due_day'] !== null ? e($closed ? (game_day_info((int) $task['due_day'])['date'] ?? 'Tag ' . (int) $task['due_day']) : game_day_label((int) $task['due_day'])) : '<span class="muted">ohne Termin</span>' ?></td></tr>
             <?php if ($ref): ?>
                 <tr><th><?= e($ref[0]) ?></th><td><?= $ref[2] ? '<a href="' . e(url($ref[2])) . '">' . e($ref[1]) . '</a>' : e($ref[1]) ?></td></tr>
@@ -91,6 +91,7 @@ $closed = in_array($task['status'], ['done', 'dropped'], true);
                     <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int) $task['id'] ?>"><input type="hidden" name="action" value="assign">
                     <select name="assignee_id" aria-label="Zuweisen an">
                         <option value="0">– offen –</option>
+                        <option value="ai"<?= (int) $task['ai_helper'] === 1 && $task['assignee_id'] === null ? ' selected' : '' ?>>🤖 KI-Helfer</option>
                         <?php foreach ($people as $pid => $nick): ?>
                             <option value="<?= (int) $pid ?>"<?= (int) $pid === (int) $task['assignee_id'] ? ' selected' : '' ?>><?= e($nick) ?></option>
                         <?php endforeach; ?>

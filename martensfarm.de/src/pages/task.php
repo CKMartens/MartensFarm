@@ -51,9 +51,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         case 'assign':
             if ($canAssign) {
+                if ((string) ($_POST['assignee_id'] ?? '') === 'ai') {
+                    task_set_ai($task, true, $user);
+                    flash('success', 'Die KI-Helfer im Spiel arbeiten die Aufgabe ab.');
+                    redirect($self);
+                }
                 $to = (int) ($_POST['assignee_id'] ?? 0);
                 if ($to === 0 || isset($people[$to])) {
                     task_assign($task, $to ?: null, $user);
+                    if ($to === 0) {
+                        task_set_ai(task_get($id), false, $user);
+                    }
                     flash('success', $to ? 'Zugewiesen an ' . $people[$to] . '.' : 'Zuweisung entfernt.');
                 }
             }
@@ -113,6 +121,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     task_log($id, $uid, 'edit', 'geändert: ' . implode(', ', $changes));
                 }
                 task_assign($task, $data['assignee_id'] ?: null, $user);
+                if (!$data['assignee_id']) {
+                    task_set_ai(task_get($id), (bool) $data['ai_helper'], $user);
+                }
                 flash('success', 'Gespeichert.');
                 redirect($self);
             }
@@ -123,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $form ??= [
     'title' => $task['title'], 'description' => (string) $task['description'], 'farm_id' => (int) $task['farm_id'],
-    'priority' => (int) $task['priority'], 'assignee_id' => (int) $task['assignee_id'],
+    'priority' => (int) $task['priority'], 'assignee_id' => (int) $task['assignee_id'], 'ai_helper' => (int) $task['ai_helper'],
     'due_day' => $task['due_day'] !== null ? (int) $task['due_day'] : null, 'ref_type' => $task['ref_type'], 'ref_id' => $task['ref_id'],
 ];
 

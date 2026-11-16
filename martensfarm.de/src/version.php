@@ -6,5 +6,5 @@ declare(strict_types=1);
  * APP_VERSION = Stand laut README („Update auf …“), APP_BUILD = Nummer des PRs, mit dem der Stand kam.
  * So sieht man nach dem Hochladen sofort, ob der Server wirklich den neuen Stand hat.
  */
-const APP_VERSION = '0.15';
-const APP_BUILD = 25;
+const APP_VERSION = '1.0 RC';
+const APP_BUILD = 26;

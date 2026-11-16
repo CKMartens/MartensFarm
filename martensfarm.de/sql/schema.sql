@@ -1,4 +1,4 @@
--- MartensFarm Hof-Management – Datenbankschema (Stand 0.15)
+-- MartensFarm Hof-Management – Datenbankschema (Stand 1.0 RC)
 -- Bestehende Installation aktualisieren: bin/update-db.php (führt update-*.sql aus)
 -- MariaDB 10.6+ / MySQL 8+, Zeichensatz utf8mb4
 
@@ -413,6 +413,7 @@ CREATE TABLE IF NOT EXISTS contracts (
     price           BIGINT NOT NULL DEFAULT 0,
     due_day         INT NULL,
     note            TEXT NULL,
+    ai_helper       TINYINT(1) NOT NULL DEFAULT 0,           -- von KI-Helfern im Spiel abgearbeitet (1.0)
     status          VARCHAR(20) NOT NULL DEFAULT 'open',     -- open | accepted | done | cancelled
     created_by      INT UNSIGNED NULL,
     created_at      DATETIME NOT NULL,
@@ -434,6 +435,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     status         VARCHAR(20) NOT NULL DEFAULT 'todo',      -- backlog | todo | doing | review | done | dropped
     priority       TINYINT UNSIGNED NOT NULL DEFAULT 2,      -- 1 niedrig, 2 normal, 3 hoch, 4 dringend
     assignee_id    INT UNSIGNED NULL,
+    ai_helper      TINYINT(1) NOT NULL DEFAULT 0,            -- KI-Helfer im Spiel statt eines Mitspielers (1.0)
     due_day        INT NULL,                                 -- Spieltag
     ref_type       VARCHAR(20) NULL,                         -- vehicle | farmland | pen
     ref_id         VARCHAR(80) NULL,

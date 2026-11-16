@@ -46,6 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'farm_id' => isset($farms[$farmId]) ? $farmId : 0,
         'priority' => 2,
         'assignee_id' => 0,
+        'ai_helper' => (int) ($contract['ai_helper'] ?? 0),
         'due_day' => $contract['due_day'] ?? null,
         'ref_type' => $contract && $contract['farmland_id'] !== null ? 'farmland' : ($vehicle ? 'vehicle' : null),
         'ref_id' => $contract && $contract['farmland_id'] !== null ? (string) $contract['farmland_id'] : ($vehicle ? (string) $vehicle['unique_id'] : null),
