@@ -1,5 +1,5 @@
 <?php
-/** @var array $mods @var array $rest @var bool $canManage @var float $limitMb @var array $inbox @var ?string $inboxError @var array $modChoices */
+/** @var array $mods @var array $rest @var bool $canManage @var float $limitMb @var array $inbox @var ?string $inboxError @var array $modChoices @var array $pending */
 $stateBadge = [
     'ok'       => '',
     'outdated' => ' <span class="badge warn">Server hat neuere Version</span>',
@@ -12,6 +12,7 @@ $uploadForm = function (array $m, string $label) use ($limitMb): void { ?>
         <input type="file" name="file" accept=".zip,application/zip" required aria-label="ZIP für <?= e($m['mod_name']) ?>">
         <button class="btn btn-ghost" type="submit"><?= e($label) ?></button>
         <label class="check-label small"><input class="check" type="checkbox" name="force" value="1"> anderer Dateiname ok</label>
+        <label class="check-label small" title="Vor dem Herunterladen muss man einen Hinweis bestätigen"><input class="check" type="checkbox" name="private" value="1"<?= (int) ($m['is_private'] ?? 0) === 1 ? ' checked' : '' ?>> private Mod</label>
     </form>
 <?php };
 ?>
@@ -41,6 +42,7 @@ $uploadForm = function (array $m, string $label) use ($limitMb): void { ?>
                 <tr id="mod-<?= e($m['mod_name']) ?>"<?= (int) $m['is_hidden'] === 1 || (int) $m['on_server'] === 0 ? ' class="inactive"' : '' ?>>
                     <td>
                         <strong><?= e($m['title'] ?: $m['mod_name']) ?></strong><?= $stateBadge[$m['state']] ?>
+                        <?php if ((int) $m['is_private'] === 1): ?> <span class="badge warn" title="Vor dem Herunterladen kommt ein Hinweis">🔒 private Mod</span><?php endif; ?>
                         <?php if ((int) $m['is_hidden'] === 1): ?> <span class="badge">ausgeblendet</span><?php endif; ?>
                         <?php if ((int) $m['on_server'] === 0): ?> <span class="badge">nicht mehr auf dem Server</span><?php endif; ?>
                         <?php if ($m['file_uploaded_at'] && strtotime((string) $m['file_uploaded_at']) > time() - 7 * 86400): ?> <span class="badge ok">neu</span><?php endif; ?>
@@ -55,7 +57,7 @@ $uploadForm = function (array $m, string $label) use ($limitMb): void { ?>
                     <td class="num"><?= e(fmt_num((int) $m['file_size'] / 1048576, 1)) ?> MB</td>
                     <?php if ($canManage): ?><td class="num"><?= (int) $m['dl_count'] ?></td><?php endif; ?>
                     <td class="num">
-                        <a class="btn btn-primary" href="<?= e(url('downloads/datei?mod=' . rawurlencode((string) $m['mod_name']))) ?>" download>Herunterladen</a>
+                        <a class="btn btn-primary" href="<?= e(url('downloads/datei?mod=' . rawurlencode((string) $m['mod_name']))) ?>"<?= (int) $m['is_private'] === 1 ? '' : ' download' ?>>Herunterladen</a>
                     </td>
                 </tr>
                 <?php if ($canManage): ?>
@@ -84,6 +86,12 @@ $uploadForm = function (array $m, string $label) use ($limitMb): void { ?>
                                         <form method="post" action="<?= e(url('downloads')) ?>">
                                             <?= csrf_field() ?>
                                             <input type="hidden" name="mod" value="<?= e($m['mod_name']) ?>">
+                                            <input type="hidden" name="action" value="private">
+                                            <button class="btn btn-ghost" type="submit"><?= (int) $m['is_private'] === 1 ? 'Keine private Mod' : 'Als private Mod markieren' ?></button>
+                                        </form>
+                                        <form method="post" action="<?= e(url('downloads')) ?>">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="mod" value="<?= e($m['mod_name']) ?>">
                                             <input type="hidden" name="action" value="delete">
                                             <button class="btn btn-ghost" type="submit">Datei löschen</button>
                                         </form>
@@ -108,7 +116,41 @@ $uploadForm = function (array $m, string $label) use ($limitMb): void { ?>
         <p class="muted small">Große Mods nicht über den Browser hochladen, sondern per FTP in den Eingangsordner
             <?= config('downloads.inbox_dir') ? '(eingestellt in <code>downloads.inbox_dir</code>)' : '<code>var/mods-inbox/</code>' ?> legen. Heißt die ZIP genau wie die Mod
             (z. B. <code>FS25_Irgendwas.zip</code>), übernimmt der Cron sie innerhalb von 5 Minuten automatisch<?= config('downloads.inbox_auto', true) ? '' : ' (zurzeit abgeschaltet: downloads.inbox_auto)' ?>.
-            Alles andere hier zuordnen und übernehmen. Die PHP-Upload-Grenze gilt dabei nicht.</p>
+            Alles andere hier zuordnen und übernehmen. Die PHP-Upload-Grenze gilt dabei nicht.
+            Was der Cron übernimmt, sehen die Mitspieler erst, wenn es hier freigegeben ist.</p>
+        <?php if ($pending): ?>
+            <h3>Wartet auf Freigabe</h3>
+            <table class="table compact">
+                <thead><tr><th>Mod</th><th>Version</th><th class="num">Größe</th><th>Übernommen</th><th></th></tr></thead>
+                <tbody>
+                <?php foreach ($pending as $m): ?>
+                    <tr>
+                        <td><strong><?= e($m['title'] ?: $m['mod_name']) ?></strong><?= $stateBadge[$m['state']] ?>
+                            <div class="muted small"><code><?= e($m['mod_name']) ?>.zip</code> · SHA-256 <code title="<?= e($m['file_sha256']) ?>"><?= e(substr((string) $m['file_sha256'], 0, 12)) ?>…</code></div></td>
+                        <td><?= e($m['file_version'] ?: '–') ?><?php if ($m['state'] === 'outdated'): ?><div class="muted small">Server: <?= e($m['version']) ?></div><?php endif; ?></td>
+                        <td class="num"><?= e(fmt_num((int) $m['file_size'] / 1048576, 1)) ?> MB</td>
+                        <td><?= e(fmt_datetime((string) $m['file_uploaded_at'])) ?></td>
+                        <td>
+                            <form method="post" action="<?= e(url('downloads')) ?>" class="btn-row">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="mod" value="<?= e($m['mod_name']) ?>">
+                                <input type="hidden" name="action" value="approve">
+                                <label class="check-label small"><input class="check" type="checkbox" name="private" value="1"<?= (int) $m['is_private'] === 1 ? ' checked' : '' ?>> private Mod</label>
+                                <button class="btn btn-primary" type="submit">Freigeben</button>
+                            </form>
+                            <form method="post" action="<?= e(url('downloads')) ?>">
+                                <?= csrf_field() ?>
+                                <input type="hidden" name="mod" value="<?= e($m['mod_name']) ?>">
+                                <input type="hidden" name="action" value="delete">
+                                <button class="btn btn-ghost btn-sm" type="submit">Verwerfen (Datei löschen)</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table>
+            <h3>Im Eingang</h3>
+        <?php endif; ?>
         <?php if ($inboxError): ?>
             <div class="alert alert-error"><?= e($inboxError) ?></div>
         <?php else: ?>
@@ -143,7 +185,8 @@ $uploadForm = function (array $m, string $label) use ($limitMb): void { ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
-                                <button class="btn btn-primary" type="submit"<?= $f['ready'] && !$f['problem'] ? '' : ' disabled' ?>>Übernehmen</button>
+                                <label class="check-label small"><input class="check" type="checkbox" name="private" value="1"> private Mod</label>
+                                <button class="btn btn-primary" type="submit"<?= $f['ready'] && !$f['problem'] ? '' : ' disabled' ?> title="Von Hand übernommen ist sie gleich freigegeben">Übernehmen</button>
                             </form>
                             <?php if ($f['mod'] === null && $f['guess'] !== null): ?><div class="muted small">Vorschlag nach Dateinamen, bitte prüfen.</div><?php endif; ?>
                             <?php if ($f['mod'] === null && $f['guess'] === null): ?><div class="muted small">Name passt zu keiner Mod aus der Server-Liste.</div><?php endif; ?>

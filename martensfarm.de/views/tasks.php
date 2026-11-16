@@ -20,6 +20,7 @@ $total = array_sum(array_map('count', $columns)) - count($columns['done']);
             <label class="check-label small"><input class="check" type="checkbox" name="meine" value="1"<?= $mine ? ' checked' : '' ?>> nur meine</label>
             <button class="btn btn-ghost btn-sm" type="submit">Filtern</button>
         </form>
+        <a class="btn btn-ghost" href="<?= e(url('aufgaben?archiv=1' . ($farmId ? '&hof=' . $farmId : ''))) ?>">🗄 Archiv</a>
         <?php if (can($user, 'tasks.create')): ?>
             <a class="btn btn-primary" href="<?= e(url('aufgaben/neu' . ($farmId ? '?hof=' . $farmId : ''))) ?>">+ Neue Aufgabe</a>
         <?php endif; ?>

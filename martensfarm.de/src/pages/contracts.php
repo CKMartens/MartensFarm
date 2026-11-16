@@ -3,7 +3,8 @@ declare(strict_types=1);
 /** @var array $user */
 
 $all = isset($_GET['alle']);
-$contracts = contracts_list($all);
+$archived = isset($_GET['archiv']);
+$contracts = contracts_list($all, $archived);
 $suggestions = [];
 foreach ($contracts as $c) {
     foreach (contract_suggestions($c) as $s) {
@@ -13,4 +14,4 @@ foreach ($contracts as $c) {
     }
 }
 
-render('contracts', compact('user', 'contracts', 'all', 'suggestions') + ['title' => 'Lohnaufträge', 'nav' => 'lohnauftraege']);
+render('contracts', compact('user', 'contracts', 'all', 'archived', 'suggestions') + ['title' => 'Lohnaufträge', 'nav' => 'lohnauftraege']);

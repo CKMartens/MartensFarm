@@ -81,15 +81,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('success', 'Lohnauftrag erledigt. Die Einnahme steht jetzt als Vorschlag unter Finanzen.');
         redirect($self);
     } elseif ($action === 'cancel' && in_array($contract['status'], ['open', 'accepted'], true)) {
-        q('UPDATE contracts SET status = \'cancelled\', updated_at = ? WHERE id = ?', [now(), (int) $contract['id']]);
+        q('UPDATE contracts SET status = \'cancelled\', done_day = ?, updated_at = ? WHERE id = ?', [current_game_day(), now(), (int) $contract['id']]);
         foreach (q('SELECT * FROM tasks WHERE contract_id = ? AND status NOT IN (\'done\', \'dropped\')', [(int) $contract['id']])->fetchAll() as $t) {
             task_set_status($t, 'dropped', $user, 'Lohnauftrag storniert');
         }
         flash('success', 'Lohnauftrag storniert, offene Aufgaben sind verworfen.');
         redirect($self);
     } elseif ($action === 'reopen' && $contract['status'] === 'cancelled') {
-        q('UPDATE contracts SET status = \'open\', updated_at = ? WHERE id = ?', [now(), (int) $contract['id']]);
+        q('UPDATE contracts SET status = \'open\', done_day = NULL, archived_at = NULL, archived_by = NULL, updated_at = ? WHERE id = ?', [now(), (int) $contract['id']]);
         flash('success', 'Wieder geöffnet.');
+        redirect($self);
+    } elseif (($action === 'archive' || $action === 'unarchive') && contract_can_archive($user, $contract)) {
+        contract_archive($contract, $user, $action === 'archive');
+        flash('success', $action === 'archive' ? 'Lohnauftrag archiviert (mit seinen erledigten Aufgaben).' : 'Lohnauftrag ist wieder in der Liste.');
         redirect($self);
     } else {
         redirect($self);

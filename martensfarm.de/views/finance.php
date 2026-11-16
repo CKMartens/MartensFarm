@@ -99,7 +99,8 @@ $monthStatus = [
             <table class="table compact">
                 <thead><tr><th>Tag</th><th>Buchungssatz</th><th class="num">Laut Spiel</th><th class="num">Gebucht</th><th class="num">Offen</th><th></th></tr></thead>
                 <tbody>
-                <?php foreach ($gameOpen as $r): $c = $cats[$r['category_id']] ?? null; ?>
+                <?php foreach ($gameOpen as $i => $r): $c = $cats[$r['category_id']] ?? null;
+                    $lastOfDay = !isset($gameOpen[$i + 1]) || $gameOpen[$i + 1]['day'] !== $r['day']; ?>
                     <tr>
                         <td><?= (int) $r['day'] ?></td>
                         <td><?= e($c['name'] ?? '?') ?><br><span class="muted small"><?= e(implode(', ', $r['stats'])) ?></span></td>
@@ -120,6 +121,20 @@ $monthStatus = [
                             <?php endif; ?>
                         </td>
                     </tr>
+                    <?php if ($lastOfDay && !$readOnly && ($fix = finance_day_correctable($gameOpen, (int) $r['day']))): $fixSum = array_sum(array_column($fix, 'open')); ?>
+                        <tr class="day-correct">
+                            <td colspan="4" class="small">↳ Tag <?= (int) $r['day'] ?>: <?= count($fix) ?> Abweichung<?= count($fix) === 1 ? '' : 'en' ?> zum Gebuchten</td>
+                            <td class="num <?= $cls($fixSum) ?>"><?= e($sign($fixSum)) ?></td>
+                            <td class="actions">
+                                <form method="post" action="<?= e(url('finanzen' . $q)) ?>">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="action" value="day_correct">
+                                    <input type="hidden" name="day" value="<?= (int) $r['day'] ?>">
+                                    <button class="btn btn-ghost btn-sm" type="submit" title="Differenz als Korrekturbuchung speichern (lässt sich stornieren)">Tag korrigieren</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endif; ?>
                 <?php endforeach; ?>
                 </tbody>
             </table>
@@ -130,6 +145,9 @@ $monthStatus = [
             <p class="muted">Noch keine Daten. Die kommen mit der Export-Mod ab Version 0.3: Sie zählt jede Geldbewegung im Spiel mit (Fahrzeugkauf, Treibstoff, Ernteverkauf, Lohn …) und meldet sie beim Speichern.</p>
         <?php endif; ?>
         <p class="muted small">Pro Spieltag und Buchungssatz: was das Spiel gemeldet hat, abzüglich dem, was schon gebucht ist. Zuordnung unter Verwaltung → Buchungssätze.</p>
+        <p class="muted small"><strong>Tag korrigieren:</strong> Weicht das Gebuchte an einem Tag vom Spiel ab (z. B. Tippfehler bei einzeln gebuchten Lohnaufträgen), bucht der Knopf die Differenz als Korrektur
+            und nimmt sie aus der Liste. Ganz ungebuchte Zeilen bleiben stehen, die bitte normal übernehmen. Die Korrektur lässt sich im Kassenbuch stornieren.</p>
+        <p class="muted small">Für Buchungen wie Verbrauchsgüter, Lohn, Sonstiges, Fahrzeugwartung und Treibstoff usw. empfiehlt es sich, diese erst am Ende des jeweiligen Spieltages zu übernehmen, da diese täglich aufsummiert werden.</p>
     </section>
 
     <section class="card">
@@ -294,7 +312,7 @@ $monthStatus = [
             <?php foreach ($bookings as $b): $cancelled = $b['cancelled_at'] !== null; ?>
                 <tr<?= $cancelled ? ' class="inactive"' : '' ?>>
                     <td><?= (int) $b['game_day'] ?></td>
-                    <td><?= e($cats[(int) $b['category_id']]['name'] ?? '?') ?><?= $b['source'] === 'game' ? ' <span class="badge">Spiel</span>' : '' ?><?= $b['source'] === 'correction' ? ' <span class="badge">Monatsabschluss</span>' : '' ?><?= $isLocked((int) $b['game_day']) ? ' <span title="Monat abgeschlossen">🔒</span>' : '' ?></td>
+                    <td><?= e($cats[(int) $b['category_id']]['name'] ?? '?') ?><?= $b['source'] === 'game' ? ' <span class="badge">Spiel</span>' : '' ?><?= $b['source'] === 'correction' ? ' <span class="badge">Monatsabschluss</span>' : '' ?><?= $b['source'] === 'day_correction' ? ' <span class="badge">Tageskorrektur</span>' : '' ?><?= $isLocked((int) $b['game_day']) ? ' <span title="Monat abgeschlossen">🔒</span>' : '' ?></td>
                     <td><?= e($b['text']) ?><?= $b['vehicle_name'] !== null ? ' <a class="small" href="' . e(url('fuhrpark/fahrzeug?id=' . rawurlencode((string) $b['ref_id']))) . '">🚜 ' . e($b['vehicle_name']) . '</a>' : '' ?><?= $cancelled ? '<br><span class="small">storniert von ' . e($b['cancelled_nick'] ?? '?') . ', ' . e(fmt_datetime($b['cancelled_at'])) . '</span>' : '' ?></td>
                     <td class="num <?= $cancelled ? '' : $cls((int) $b['amount']) ?>"><?= e($sign((int) $b['amount'])) ?></td>
                     <td><?= e($b['nickname'] ?? '–') ?><br><span class="muted small"><?= e(fmt_datetime($b['created_at'])) ?></span></td>

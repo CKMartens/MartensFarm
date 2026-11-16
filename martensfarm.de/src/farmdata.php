@@ -11,10 +11,12 @@ const SETTING_DEFAULTS = [
     'active_farm_ids'           => '1,2,3,4,5,6,7,8',
     'maintenance_threshold_pct' => '20',
     'food_min_days'             => '2',
-    'food_min_pct'              => '10',
-    'water_min_pct'             => '20',
-    'straw_min_pct'             => '10',
-    'product_full_pct'          => '90',
+    'food_min_pct'              => '25',
+    'water_min_pct'             => '25',
+    'straw_min_pct'             => '25',
+    'product_full_pct'          => '80',
+    'health_min_pct'            => '50',
+    'pens_no_health'            => '[]',   // JSON-Liste von pen_keys ohne Gesundheits-Hinweis (z. B. Kälberstall)
     'hide_empty_pens'           => '1',
     'tasks_auto_repair'         => '1',
     'tasks_auto_animals'        => '1',
@@ -370,9 +372,17 @@ function fill_pct(?array $fill): ?float
     return max(0.0, min(100.0, $fill['level'] / $fill['capacity'] * 100));
 }
 
+/** Ställe (pen_key), bei denen die Gesundheit nicht geprüft wird (Einstellungen), z. B. der Kälberstall */
+function pens_no_health(): array
+{
+    $list = json_decode(setting('pens_no_health'), true);
+    return is_array($list) ? array_values(array_filter($list, 'is_string')) : [];
+}
+
 /**
- * Hinweise für einen Stall. Gibt eine Liste von ['key' => food|water|straw|product_<TYP>, 'level' => 'warn'|'bad', 'text' => ..] zurück.
+ * Hinweise für einen Stall. Gibt eine Liste von ['key' => food|water|straw|health|product_<TYP>, 'level' => 'warn'|'bad', 'text' => ..] zurück.
  * Leere Ställe haben keine Hinweise.
+ * Futter zählt alle Sorten zusammen (TMR, Heu, Gras, Silage …), weil der Stall einen gemeinsamen Futtertrog hat.
  */
 function pen_alerts(array $pen): array
 {
@@ -385,18 +395,14 @@ function pen_alerts(array $pen): array
     // Futter
     $food = (float) $pen['food_total'];
     $perDay = $pen['food_per_day'] !== null ? (float) $pen['food_per_day'] : 0.0;
+    $foodPct = $pen['food_capacity'] !== null && (float) $pen['food_capacity'] > 0 ? $food / (float) $pen['food_capacity'] * 100 : null;
+    $foodDays = $perDay > 0 ? $food / $perDay : null;
     if ($food <= 0.5) {
         $alerts[] = ['key' => 'food', 'level' => 'bad', 'text' => 'Kein Futter mehr'];
-    } elseif ($perDay > 0) {
-        $days = $food / $perDay;
-        if ($days < setting_int('food_min_days')) {
-            $alerts[] = ['key' => 'food', 'level' => 'warn', 'text' => 'Futter reicht nur noch ca. ' . fmt_num($days, 1) . ' Tage'];
-        }
-    } elseif ($pen['food_capacity'] !== null && (float) $pen['food_capacity'] > 0) {
-        $pct = $food / (float) $pen['food_capacity'] * 100;
-        if ($pct < setting_int('food_min_pct')) {
-            $alerts[] = ['key' => 'food', 'level' => 'warn', 'text' => 'Futter bei ' . fmt_num($pct) . ' %'];
-        }
+    } elseif ($foodPct !== null && $foodPct < setting_int('food_min_pct')) {
+        $alerts[] = ['key' => 'food', 'level' => 'warn', 'text' => 'Futter bei ' . fmt_num($foodPct) . ' %' . ($foodDays !== null ? ' (ca. ' . fmt_num($foodDays, 1) . ' Tage)' : '')];
+    } elseif ($foodDays !== null && $foodDays < setting_int('food_min_days')) {
+        $alerts[] = ['key' => 'food', 'level' => 'warn', 'text' => 'Futter reicht nur noch ca. ' . fmt_num($foodDays, 1) . ' Tage'];
     }
 
     // Wasser (nicht bei automatischer Versorgung)
@@ -414,6 +420,14 @@ function pen_alerts(array $pen): array
         $pct = fill_pct($storage['STRAW']);
         if ($pct !== null && $pct < setting_int('straw_min_pct')) {
             $alerts[] = ['key' => 'straw', 'level' => $storage['STRAW']['level'] <= 0.5 ? 'bad' : 'warn', 'text' => 'Stroh bei ' . fmt_num($pct) . ' %'];
+        }
+    }
+
+    // Gesundheit (Durchschnitt der Tiere, 0–100). Ställe lassen sich unter Einstellungen ausnehmen.
+    if ($pen['health'] !== null && !in_array((string) $pen['pen_key'], pens_no_health(), true)) {
+        $health = (float) $pen['health'];
+        if ($health < setting_int('health_min_pct')) {
+            $alerts[] = ['key' => 'health', 'level' => $health < setting_int('health_min_pct') / 2 ? 'bad' : 'warn', 'text' => 'Gesundheit bei ' . fmt_num($health) . ' %'];
         }
     }
 

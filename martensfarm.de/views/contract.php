@@ -82,6 +82,7 @@ $formHtml = function () use ($contract, $farms, $farmlands, $form, $dayOptions, 
         <h1><?= $contract ? e($contract['service']) : 'Neuer Lohnauftrag' ?></h1>
         <?php if ($contract): ?>
             <p class="muted"><span class="badge <?= e($badge[$contract['status']] ?? '') ?>"><?= e(CONTRACT_STATUSES[$contract['status']] ?? '') ?></span>
+                <?= $contract['archived_at'] !== null ? '<span class="badge">🗄 archiviert</span>' : '' ?>
                 für <?= e(contract_client($contract)) ?> · <?= e(farm_name((int) $contract['farm_id'])) ?></p>
         <?php endif; ?>
     </div>
@@ -114,6 +115,8 @@ $formHtml = function () use ($contract, $farms, $farmlands, $form, $dayOptions, 
                         'finish' => $active ? ['Als erledigt abschließen', 'btn-primary'] : null,
                         'cancel' => $active ? ['Stornieren', 'btn-ghost'] : null,
                         'reopen' => $contract['status'] === 'cancelled' ? ['Wieder öffnen', 'btn-ghost'] : null,
+                        'archive' => contract_can_archive($user, $contract) && $contract['archived_at'] === null ? ['Archivieren', 'btn-ghost'] : null,
+                        'unarchive' => contract_can_archive($user, $contract) && $contract['archived_at'] !== null ? ['Aus dem Archiv holen', 'btn-ghost'] : null,
                     ]) as $act => [$label, $cls]): ?>
                         <form method="post" action="<?= e(url('lohnauftraege/auftrag')) ?>">
                             <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int) $contract['id'] ?>"><input type="hidden" name="action" value="<?= e($act) ?>">
@@ -122,6 +125,7 @@ $formHtml = function () use ($contract, $farms, $farmlands, $form, $dayOptions, 
                     <?php endforeach; ?>
                 </div>
                 <?php if ($active): ?><p class="muted small">Sind alle Aufgaben des Auftrags erledigt, schließt er sich von selbst.</p><?php endif; ?>
+                <?php if (!$active && $contract['archived_at'] === null): ?><p class="muted small">Erledigte und stornierte Aufträge wandern zum nächsten Spielmonat von selbst ins Archiv (Einstellung unter Verwaltung).</p><?php endif; ?>
             <?php endif; ?>
         </section>
 

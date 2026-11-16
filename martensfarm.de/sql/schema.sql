@@ -1,4 +1,4 @@
--- MartensFarm Hof-Management – Datenbankschema (Stand 0.7)
+-- MartensFarm Hof-Management – Datenbankschema (Stand 0.15)
 -- Bestehende Installation aktualisieren: bin/update-db.php (führt update-*.sql aus)
 -- MariaDB 10.6+ / MySQL 8+, Zeichensatz utf8mb4
 
@@ -372,6 +372,8 @@ CREATE TABLE IF NOT EXISTS server_mods (
     hash          VARCHAR(64)  NULL,
     on_server     TINYINT(1) NOT NULL DEFAULT 1,
     is_hidden     TINYINT(1) NOT NULL DEFAULT 0,
+    is_private    TINYINT(1) NOT NULL DEFAULT 0,             -- private Mod: Hinweis vor dem Herunterladen bestätigen
+    is_approved   TINYINT(1) NOT NULL DEFAULT 1,             -- 0 = per FTP übernommen, wartet auf Freigabe
     note          TEXT NULL,
     first_seen_at DATETIME NOT NULL,
     last_seen_at  DATETIME NOT NULL,
@@ -417,6 +419,8 @@ CREATE TABLE IF NOT EXISTS contracts (
     updated_at      DATETIME NOT NULL,
     done_at         DATETIME NULL,
     done_day        INT NULL,
+    archived_at     DATETIME NULL,
+    archived_by     INT UNSIGNED NULL,
     KEY idx_contract_sg (savegame_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -440,12 +444,15 @@ CREATE TABLE IF NOT EXISTS tasks (
     updated_at     DATETIME NOT NULL,
     done_at        DATETIME NULL,
     done_by        INT UNSIGNED NULL,
-    done_day       INT NULL,                                 -- Spieltag, an dem erledigt (fürs Aufräumen, ab 0.9)
+    done_day       INT NULL,                                 -- Spieltag, an dem erledigt (fürs Archivieren, ab 0.9)
+    archived_at    DATETIME NULL,                            -- im Archiv (ab 0.15)
+    archived_by    INT UNSIGNED NULL,
     KEY idx_task_board (savegame_id, status),
     KEY idx_task_done (savegame_id, status, done_day),
     KEY idx_task_auto (savegame_id, auto_key),
     KEY idx_task_assignee (assignee_id, status),
-    KEY idx_task_contract (contract_id)
+    KEY idx_task_contract (contract_id),
+    KEY idx_task_archived (savegame_id, archived_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Verlauf und Kommentare je Aufgabe. user_id NULL = automatisch.
@@ -527,7 +534,8 @@ CREATE TABLE IF NOT EXISTS board_posts (
     body         TEXT NULL,
     ref_type     VARCHAR(20) NULL,                         -- task | contract | vehicle
     ref_id       VARCHAR(80) NULL,
-    is_pinned    TINYINT(1) NOT NULL DEFAULT 0,
+    is_pinned    TINYINT(1) NOT NULL DEFAULT 0,               -- Ankündigung: auf dem Dashboard zeigen
+    is_sticky    TINYINT(1) NOT NULL DEFAULT 0,               -- nicht ausblendbar (bleibt bis abgeheftet oder Anzeigedatum vorbei)
     expires_at   DATE NULL,                                -- nur Ankündigungen: ab dann nicht mehr oben
     mod_url      VARCHAR(255) NULL,
     mod_status   VARCHAR(20) NULL,                         -- open | accepted | rejected | installed
@@ -563,3 +571,16 @@ CREATE TABLE IF NOT EXISTS board_reads (
 INSERT IGNORE INTO role_permissions (role_key, permission) VALUES
     ('hofleiter', 'board.post'), ('hofleiter', 'board.announce'), ('hofleiter', 'board.moderate'), ('mitarbeiter', 'board.post');
 INSERT IGNORE INTO settings (name, value) VALUES ('seed_board_permissions', '1');
+
+-- Wer welche Dashboard-Nachricht als gelesen ausgeblendet hat (0.15)
+CREATE TABLE IF NOT EXISTS board_dismissals (
+    user_id       INT UNSIGNED NOT NULL,
+    post_id       INT UNSIGNED NOT NULL,
+    dismissed_at  DATETIME NOT NULL,
+    PRIMARY KEY (user_id, post_id),
+    KEY idx_dismiss_post (post_id),
+    CONSTRAINT fk_dismiss_post FOREIGN KEY (post_id) REFERENCES board_posts (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Neue Installation: Tier-Schwellen kommen aus den Standardwerten im Code, update-0.15.sql soll sie nicht anfassen
+INSERT IGNORE INTO settings (name, value) VALUES ('seed_animal_thresholds_015', '1');

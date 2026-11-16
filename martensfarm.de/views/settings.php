@@ -1,5 +1,5 @@
 <?php
-/** @var array $byId @var array $activeIds @var array $counts @var array $savegames @var ?int $sgId @var ?array $mfInfo @var array $gs @var ?string $mapName */
+/** @var array $byId @var array $activeIds @var array $counts @var array $savegames @var ?int $sgId @var ?array $mfInfo @var array $gs @var ?string $mapName @var array $pens @var array $noHealth */
 ?>
 <header class="page-head">
     <div>
@@ -41,16 +41,40 @@
                     </label>
                 <?php endforeach; ?>
                 <label class="check-label"><input class="check" type="checkbox" name="hide_empty_pens" value="1"<?= setting_int('hide_empty_pens') === 1 ? ' checked' : '' ?>> Leere Ställe auf der Tiere-Seite ausblenden</label>
+                <p class="muted small">Die Hinweise stehen auf dem Dashboard und auf der Tiere-Seite. Mit „Tierpflege-Aufgaben“ (unten) wird daraus auch je Stall und Problem eine Aufgabe.</p>
             </div>
+        </section>
+
+        <section class="card">
+            <h2>Gesundheit: Ställe ausnehmen</h2>
+            <p class="muted small">Haken = für diesen Stall keinen Gesundheits-Hinweis, z. B. Kälberstall oder Ställe, in denen die Tiere absichtlich anders gehalten werden. Futter, Wasser, Stroh und Produkte werden weiter geprüft.</p>
+            <?php if ($pens): ?>
+                <table class="table compact">
+                    <thead><tr><th>Ausnehmen</th><th>Stall</th><th>Hof</th><th class="num">Tiere</th><th class="num">Gesundheit</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($pens as $p): ?>
+                        <tr>
+                            <td><input class="check" type="checkbox" name="no_health[]" value="<?= e($p['pen_key']) ?>"<?= in_array((string) $p['pen_key'], $noHealth, true) ? ' checked' : '' ?> aria-label="<?= e($p['name']) ?> ausnehmen"></td>
+                            <td><?= e($p['name']) ?> <span class="muted small">(<?= e(animal_name($p['animal_type'])) ?>)</span></td>
+                            <td><?= e(farm_name((int) $p['farm_id'])) ?></td>
+                            <td class="num"><?= (int) $p['animals'] ?></td>
+                            <td class="num"><?= $p['health'] !== null ? e(fmt_num((float) $p['health'])) . ' %' : '–' ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php else: ?>
+                <p class="muted">Noch keine Ställe im aktuellen Savegame.</p>
+            <?php endif; ?>
         </section>
 
         <section class="card">
             <h2>Aufgaben</h2>
             <div class="stack">
                 <label class="check-label"><input class="check" type="checkbox" name="tasks_auto_repair" value="1"<?= setting_int('tasks_auto_repair') === 1 ? ' checked' : '' ?>> Werkstatt-Aufgaben automatisch anlegen (ab der Schwelle oben)</label>
-                <label class="check-label"><input class="check" type="checkbox" name="tasks_auto_animals" value="1"<?= setting_int('tasks_auto_animals') === 1 ? ' checked' : '' ?>> Tierpflege-Aufgaben automatisch anlegen (Futter, Wasser, Stroh, Produkte voll)</label>
+                <label class="check-label"><input class="check" type="checkbox" name="tasks_auto_animals" value="1"<?= setting_int('tasks_auto_animals') === 1 ? ' checked' : '' ?>> Tierpflege-Aufgaben automatisch anlegen (Futter, Wasser, Stroh, Gesundheit, Produkte voll)</label>
                 <label class="check-label"><input class="check" type="checkbox" name="tasks_review_required" value="1"<?= setting_int('tasks_review_required') === 1 ? ' checked' : '' ?>> Fertige Aufgaben erst prüfen: Abhaken darf nur, wer Aufgaben verteilt</label>
-                <label class="check-label"><input class="check" type="checkbox" name="tasks_cleanup_done" value="1"<?= setting_int('tasks_cleanup_done') === 1 ? ' checked' : '' ?>> Erledigte Aufgaben im nächsten Spielmonat automatisch löschen (mit Kommentaren und Verlauf)</label>
+                <label class="check-label"><input class="check" type="checkbox" name="tasks_cleanup_done" value="1"<?= setting_int('tasks_cleanup_done') === 1 ? ' checked' : '' ?>> Erledigte/verworfene Aufgaben und abgeschlossene Lohnaufträge zum nächsten Spielmonat automatisch archivieren (nichts wird gelöscht)</label>
                 <p class="muted small">Automatische Aufgaben schließen sich von selbst, sobald der nächste Save zeigt, dass alles wieder passt.</p>
             </div>
         </section>

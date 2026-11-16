@@ -58,12 +58,15 @@ $modCls = ['open' => '', 'accepted' => 'ok', 'rejected' => 'bad', 'installed' =>
                         </select>
                     </label>
                     <?php if (isset($kinds['announcement'])): ?>
-                        <div class="row">
-                            <label class="check-label"><input class="check" type="checkbox" name="is_pinned" value="1"<?= !empty($form['is_pinned']) ? ' checked' : '' ?>> Ankündigung oben anheften</label>
-                            <label>bis einschließlich
+                        <div class="row wrap">
+                            <label class="check-label"><input class="check" type="checkbox" name="is_pinned" value="1"<?= !empty($form['is_pinned']) ? ' checked' : '' ?>> Anheften: oben und auf dem Dashboard zeigen</label>
+                            <label class="check-label"><input class="check" type="checkbox" name="is_sticky" value="1"<?= !empty($form['is_sticky']) ? ' checked' : '' ?>> nicht ausblendbar</label>
+                            <label>Anzeigen bis einschließlich
                                 <input type="date" name="expires_at" value="<?= e($form['expires_at'] ?? '') ?>">
                             </label>
                         </div>
+                        <p class="muted small">Angeheftete Ankündigungen stehen auf dem Dashboard. Spieler können sie dort als gelesen ausblenden, außer sie sind „nicht ausblendbar“:
+                            Dann bleiben sie stehen, bis sie jemand abheftet oder das Anzeigedatum vorbei ist.</p>
                     <?php endif; ?>
                 </fieldset>
                 <p class="muted small">Nur Text, kein HTML. Was nicht zur Art passt, wird ignoriert.</p>

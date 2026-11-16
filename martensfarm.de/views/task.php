@@ -15,6 +15,7 @@ $closed = in_array($task['status'], ['done', 'dropped'], true);
             <span class="badge<?= $task['status'] === 'done' ? ' ok' : '' ?>"><?= e(TASK_STATUSES[$task['status']] ?? $task['status']) ?></span>
             <?php if ((int) $task['priority'] !== 2): ?><span class="badge<?= (int) $task['priority'] === 4 ? ' bad' : ((int) $task['priority'] === 3 ? ' warn' : '') ?>"><?= e(TASK_PRIORITIES[(int) $task['priority']]) ?></span><?php endif; ?>
             <?php if ($task['auto_key'] !== null): ?><span class="badge">🤖 automatisch</span><?php endif; ?>
+            <?php if ($task['archived_at'] !== null): ?><span class="badge">🗄 archiviert</span><?php endif; ?>
             <?= $task['farm_id'] ? e(farm_name((int) $task['farm_id'])) : 'alle Höfe' ?>
         </p>
     </div>
@@ -66,6 +67,13 @@ $closed = in_array($task['status'], ['done', 'dropped'], true);
         <?php endif; ?>
 
         <div class="btn-row">
+            <?php if (task_can_archive($user, $task)): ?>
+                <form method="post" action="<?= e(url('aufgaben/aufgabe')) ?>">
+                    <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int) $task['id'] ?>">
+                    <input type="hidden" name="action" value="<?= $task['archived_at'] === null ? 'archive' : 'unarchive' ?>">
+                    <button class="btn btn-ghost btn-sm" type="submit"><?= $task['archived_at'] === null ? '🗄 Archivieren' : 'Aus dem Archiv holen' ?></button>
+                </form>
+            <?php endif; ?>
             <?php if (task_can_take($user, $task)): ?>
                 <form method="post" action="<?= e(url('aufgaben/aufgabe')) ?>">
                     <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int) $task['id'] ?>"><input type="hidden" name="action" value="take">

@@ -36,10 +36,9 @@ if ($sgId !== null && finance_can_view($user, (int) $farmId)) {
 $myTasks = tasks_open_for_user((int) $user['id']);
 $freeTasks = (int) q('SELECT COUNT(*) FROM tasks WHERE savegame_id <=> ? AND assignee_id IS NULL AND status IN (\'todo\', \'doing\') AND (farm_id = ? OR farm_id IS NULL)', [$sgId, $farmId])->fetchColumn();
 
-// Nachrichten: Ungelesene und angeheftete Ankündigungen
+// Nachrichten: Ungelesene und angeheftete Ankündigungen (ohne die, die der Nutzer schon weggeklickt hat)
 $boardUnread = board_unread_count($user);
-$boardPinned = q('SELECT id, title, created_at FROM board_posts WHERE kind = \'announcement\' AND is_pinned = 1 AND hidden_at IS NULL
-                  AND (expires_at IS NULL OR expires_at >= CURDATE()) ORDER BY created_at DESC LIMIT 3')->fetchAll();
+$boardPinned = board_dashboard_posts($user);
 
 // Verkaufstipps: aktuelle Periode vs. Bestpreis
 $period = current_period_key();

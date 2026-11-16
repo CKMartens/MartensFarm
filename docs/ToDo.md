@@ -1,6 +1,6 @@
 # ToDo / Roadmap
 
-Stand: 15.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten Entscheidungen.
+Stand: 16.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten Entscheidungen.
 
 **Rahmen für alles:**
 - Server steht im Hetzner-Netz: keine offenen Formulare, Rate-Limits, schonende Abrufe
@@ -20,6 +20,7 @@ Stand: 15.11.2026. Basis ist Carstens Ideenliste, ergänzt um die abgestimmten E
 | 5 | Datenweg erweitern: Export-Mod für Tiere, Lager und Höfe 2–8 | erledigt (0.2) |
 | 6 | Downloadverwaltung | erledigt (0.6) |
 | 7 | Nachrichtenboard: Mod-Wünsche, Adminbenachrichtigungen, Hinweise zu Aufgaben | erledigt (0.11) |
+| 8 | Anpassungen nach dem Spieleabend 16.11. (siehe unten) | erledigt (0.15) |
 
 ---
 
@@ -58,6 +59,7 @@ Ziel: ein einfaches Kassenbuch und ein Hinweis, wenn sich der Kontostand ändert
   - Eigener Buchungssatz **Korrektur (Abgleich)**, beim normalen Buchen nicht auswählbar
   - Der Monat gilt danach als **abgeschlossen**: keine Buchungen, Stornos oder Löschungen mehr für seine Tage. Recht *Monat abschließen* (`finance.close`), wieder öffnen mit *Buchungssätze verwalten* (Korrektur wird storniert)
 - [x] **Buchungen löschen** (0.8): zusätzlich zum Stornieren echtes Löschen, eigenes Recht `finance.delete` (nach dem Update nur Admin), mit Rückfrage und optionalem Grund. Im **Löschprotokoll** bleibt stehen, wer wann was gelöscht hat
+- [x] **Tageskorrektur** (0.15): Weicht das Gebuchte an einem Spieltag vom Spiel ab (Tippfehler bei einzeln gebuchten Lohnaufträgen), bucht „Tag korrigieren“ die Differenz als Korrektur und nimmt sie aus den Vorschlägen. Hinweis unter der Liste: tägliche Summen (Verbrauchsgüter, Lohn, Sonstiges, Fahrzeugwartung, Treibstoff) erst am Ende des Spieltages übernehmen
 - [x] **Stornierte Buchungen löschen** (0.12): einzeln oder alle auf einmal im Kassenbuch; **Löschprotokoll unter Verwaltung** über alle Höfe (wer, wann, was, Grund)
 
 ## 3. Aufgaben ✔
@@ -73,7 +75,9 @@ Seite `/aufgaben` (0.7). Aufgaben manuell oder automatisch anlegen und an Mitspi
 - [x] Einstellungen: Automatik an/aus, ob Spieler selbst abhaken dürfen oder erst „Prüfung“
 - [ ] Im echten Spiel prüfen: Kommen die Auto-Aufgaben zum richtigen Zeitpunkt und schließen sie sich nach dem Save?
 - [x] **Aufgaben löschen** (0.9): eigenes Recht `tasks.delete` (nach dem Update nur Admin), mit Rückfrage, Kommentare und Verlauf gehen mit. Nicht bei Aufgaben eines offenen Lohnauftrags
-- [x] **Erledigte automatisch aufräumen** (0.9): Aufgaben in „Erledigt“ werden im nächsten Ingame-Monat beim Import gelöscht (abschaltbar unter Einstellungen). Lohnaufträge verlieren nichts: Aufgaben offener Aufträge bleiben, Buchungsvorschläge hängen am Auftrag
+- [x] ~~Erledigte automatisch aufräumen (0.9): im nächsten Ingame-Monat löschen~~ → ersetzt durch das Archiv (0.15)
+- [x] **Archiv** (0.15): Aufgaben (erledigt/verworfen) und Lohnaufträge (erledigt/storniert) per Klick archivieren, zum nächsten Spielmonat automatisch. Nichts wird gelöscht, Archiv-Ansicht unter Aufgaben und Lohnaufträge
+- [x] **Tierpflege** (0.15): Futter/Wasser/Stroh unter 25 %, Gesundheit unter 50 % (Ställe ausnehmbar, z. B. Kälberstall), Milch/Gülle/Mist ab 80 %, als Dashboard-Nachricht und Aufgabe
 
 ### Lohnaufträge ✔
 
@@ -115,6 +119,8 @@ weil Nitrado Mods nur mit Login im Web-Interface herausgibt (der Durchreich-Weg 
 - [x] Hinweis über der Liste: nur für unsere Runde, nicht weitergeben, Nutzung auf eigene Gefahr
 - [x] Größengrenze pro Datei (`downloads.max_mb` und PHP-Upload-Grenze), Download-Zahlen je Mod
 - [x] **FTP-Eingang (0.14):** große Mods per FTP nach `var/mods-inbox/`, Cron übernimmt passende ZIPs automatisch, Rest unter `/downloads` zuordnen (umgeht die PHP-Upload-Grenze)
+- [x] **Freigabe** (0.15): Was der Cron aus dem FTP-Eingang übernimmt, ist erst nach Freigabe durch einen Verwalter sichtbar
+- [x] **Private Mods** (0.15): Haken beim Anlegen, vor dem Herunterladen muss ein Hinweis bestätigt werden
 - [ ] Bei fremden Mods vorher die Erlaubnis der Autoren einholen, viele verbieten Re-Uploads
 
 ## 7. Nachrichtenboard ✔
@@ -126,6 +132,7 @@ Seite `/nachrichten` (0.11). Ein Ort für alles, was nicht direkt eine Aufgabe o
 - [x] **Hinweise zu Aufgaben usw.:** Beiträge mit Verknüpfung zu Aufgabe, Lohnauftrag oder Fahrzeug; erscheinen auch in deren Detailansicht (Stall und Feld haben keine eigene Seite, deshalb vorerst nicht)
 - [x] Rechte statt Rollen, z. B. `board.post`, `board.announce`, `board.moderate`. Gäste nur lesen
 - [x] Ungelesen-Zähler und Kachel „Neue Nachrichten“ auf dem Dashboard
+- [x] **Dashboard-Nachrichten** (0.15): deutlich hervorgehoben, gelesene kann jeder für sich ausblenden, „nicht ausblendbar“ bleibt bis Abheften oder Anzeigedatum
 - [x] Ausblenden statt löschen, der Urheber bleibt erhalten (wie bei Aufgaben und Buchungen)
 - [x] Schutz wie überall: nur angemeldet, CSRF, Rate-Limit pro Nutzer (30/Stunde), Text ohne HTML (Ausgabe escapen)
 - [ ] Später: Benachrichtigung per Discord-Webhook (siehe Phase 3)

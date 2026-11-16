@@ -63,6 +63,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $n++;
         }
         flash($n ? 'success' : 'warning', $n ? "{$n} Buchung(en) aus dem Spiel übernommen." : 'Nichts zu übernehmen, vielleicht hat schon jemand gebucht.');
+    } elseif ($action === 'day_correct') {
+        $day = (int) ($_POST['day'] ?? -1);
+        if (finance_day_locked($sgId, $farmId, $day)) {
+            flash('error', 'Der Monat mit diesem Tag ist schon abgeschlossen.');
+        } else {
+            [$n, $sum] = finance_day_correct($user, $sgId, $farmId, $day, $start);
+            flash($n ? 'success' : 'warning', $n ? "Tag {$day}: {$n} Korrekturbuchung(en) über " . fmt_money($sum) . ' gespeichert.' : 'Für diesen Tag gibt es nichts zu korrigieren.');
+        }
     } elseif ($action === 'dismiss') {
         q('UPDATE booking_suggestions SET status = \'dismissed\' WHERE id = ? AND savegame_id = ? AND farm_id = ? AND status = \'open\'',
             [(int) ($_POST['id'] ?? 0), $sgId, $farmId]);

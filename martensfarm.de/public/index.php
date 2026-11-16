@@ -186,9 +186,15 @@ try {
             $user = require_permission('downloads.view');
             $name = (string) ($_GET['mod'] ?? '');
             $mod = mod_name_valid($name) ? (q('SELECT * FROM server_mods WHERE mod_name = ?', [$name])->fetch() ?: null) : null;
-            if ($mod === null || mod_file_state($mod) === 'missing' || ((int) $mod['is_hidden'] === 1 && !can($user, 'downloads.manage'))) {
+            $manager = can($user, 'downloads.manage');
+            if ($mod === null || mod_file_state($mod) === 'missing' || (((int) $mod['is_hidden'] === 1 || (int) $mod['is_approved'] !== 1) && !$manager)) {
                 http_response_code(404);
                 render('error', ['title' => 'Nicht gefunden', 'message' => 'Für diese Mod gibt es keine Datei.']);
+                break;
+            }
+            // Private Mod: erst den Hinweis bestätigen (Häkchen + Knopf schicken ok=1 mit)
+            if ((int) $mod['is_private'] === 1 && ($_GET['ok'] ?? '') !== '1') {
+                render('download_confirm', ['title' => 'Private Mod', 'nav' => 'downloads', 'mod' => $mod]);
                 break;
             }
             session_write_close();   // lange Downloads sollen andere Seiten nicht blockieren

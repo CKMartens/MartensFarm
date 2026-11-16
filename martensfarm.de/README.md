@@ -12,7 +12,7 @@ Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im 
 - Finanzen: Kassenbuch je Hof, Abgleich mit dem Kontostand, Vorschläge aus dem Spiel (ab 0.4), Monatsabschluss mit Korrekturbuchung und Löschen (ab 0.8)
 - Downloads: Mods, die nicht im ModHub sind, für die Mitspieler; Server-Liste automatisch aus dem Stats-Feed (ab 0.6)
 - Nachrichtenboard: Ankündigungen, Mod-Wünsche und Hinweise zu Aufgaben, Lohnaufträgen und Fahrzeugen (ab 0.11)
-- Aufgaben-Board mit automatischen Werkstatt- und Tierpflege-Aufgaben, Lohnaufträge mit Buchungsvorschlag (ab 0.7), Löschen und Aufräumen (ab 0.9)
+- Aufgaben-Board mit automatischen Werkstatt- und Tierpflege-Aufgaben, Lohnaufträge mit Buchungsvorschlag (ab 0.7), Löschen (ab 0.9) und Archiv (ab 0.15)
 
 ---
 
@@ -154,6 +154,8 @@ Die Savegame-Feeds ändern sich nur, wenn der Server speichert (Autosave bzw. ma
 
 Die App erkennt das Savegame an Map und Savegame-Name. Bei einem Wechsel legt sie automatisch ein neues an, archiviert die Kontostände
 des alten und leert die Preise. Fahrzeuge, Ställe, Lager und der Geldverlauf hängen am Savegame und tauchen wieder auf, wenn ihr zurückwechselt.
+Lager und Ställe der neuen Map entstehen von selbst beim ersten Save auf der neuen Map (Export-Mod), dafür ist nichts zu tun.
+Bis dahin zeigt die App noch den alten Stand.
 Welche Höfe zählen, wie sie heißen und ab wann es Hinweise gibt, stellt der Admin unter **Einstellungen** ein.
 
 ### Update auf 0.2
@@ -342,6 +344,32 @@ So funktioniert's:
   zu Mods, die noch nicht in der Server-Liste stehen, zeigt `/downloads` → **Per FTP bereitgestellt**. Dort Mod wählen und
   „Übernehmen“ oder „Löschen“ (Recht *Downloads verwalten*).
 - Automatik abschalten: `downloads.inbox_auto => false` in `config.php`. Die Grenze `downloads.max_mb` gilt auch für den Eingang.
+
+### Update auf 0.15 (Anpassungen nach dem Spieleabend)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Ergänzt `board_posts.is_sticky`, `server_mods.is_private`/`is_approved`,
+   `tasks`/`contracts.archived_at` und legt `board_dismissals` an. Setzt einmalig die Tier-Schwellen auf 25 % (Futter, Wasser, Stroh)
+   und 80 % (Milch, Gülle, Mist). Keine neuen Rechte.
+
+So funktioniert's:
+- **Finanzen → Vorschläge aus dem Spiel:** Weicht an einem Spieltag das Gebuchte vom Spiel ab (z. B. Tippfehler bei einzeln
+  gebuchten Lohnaufträgen), steht am Ende des Tages **Tag korrigieren**. Das bucht die Differenz auf *Korrektur (Abgleich)*,
+  verknüpft mit dem Buchungssatz, und die Zeile verschwindet. Im Kassenbuch als „Tageskorrektur“ markiert und stornierbar.
+  Ganz ungebuchte Zeilen bleiben stehen, die gehören normal übernommen.
+- **Dashboard-Nachrichten:** Angeheftete Ankündigungen stehen groß über den Kacheln. Jeder kann sie mit „Gelesen, ausblenden“ für
+  sich wegklicken (unter `/nachrichten` bleiben sie). Mit dem Haken **nicht ausblendbar** bleiben sie stehen, bis jemand sie abheftet
+  oder das Anzeigedatum vorbei ist. Tier-Hinweise erscheinen dort ebenfalls als Nachricht.
+- **Downloads:** Was der Cron aus dem FTP-Eingang übernimmt, sehen die Mitspieler erst nach **Freigeben** (Abschnitt „Per FTP
+  bereitgestellt → Wartet auf Freigabe“). Von Hand übernommene oder im Browser hochgeladene Dateien sind gleich frei.
+  Neuer Haken **private Mod** (beim Hochladen, Übernehmen, Freigeben oder unter „Verwalten“): Vor dem Herunterladen kommt dann ein
+  Hinweis, den man abhaken muss.
+- **Tiere:** Hinweise (und mit „Tierpflege-Aufgaben“ auch Aufgaben) bei Futter, Wasser oder Stroh unter 25 %, Gesundheit unter 50 %
+  und Milch/Gülle/Mist ab 80 %. Futter zählt alle Sorten zusammen (TMR, Heu, Gras …). Ställe ohne Gesundheits-Prüfung
+  (z. B. Kälberstall) unter **Einstellungen → Gesundheit: Ställe ausnehmen**.
+- **Archiv:** Erledigte/verworfene Aufgaben und erledigte/stornierte Lohnaufträge lassen sich auf ihrer Seite archivieren und
+  wieder herausholen. Zum nächsten Spielmonat archiviert der Import sie automatisch (ersetzt das automatische Löschen aus 0.9,
+  Schalter unter **Einstellungen → Aufgaben**). Archiv unter `/aufgaben` → „Archiv“ bzw. `/lohnauftraege` → „Archiv“.
 
 ---
 

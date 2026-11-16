@@ -129,7 +129,7 @@ function task_get(int $id): ?array
 /** Aufgaben fürs Board. Filter: farm_id (0 = alle), mine (User-ID oder 0). Erledigte nur der letzten 30 Tage. */
 function tasks_for_board(int $farmId, int $mine): array
 {
-    $sql = 'SELECT * FROM tasks WHERE savegame_id <=> ? AND status <> \'dropped\'
+    $sql = 'SELECT * FROM tasks WHERE savegame_id <=> ? AND status <> \'dropped\' AND archived_at IS NULL
             AND (status <> \'done\' OR done_at > NOW() - INTERVAL 30 DAY)';
     $params = [current_savegame_id()];
     if ($farmId > 0) {
@@ -363,8 +363,11 @@ function task_set_status(array $t, string $status, ?array $user, string $note = 
     }
     $uid = $user ? (int) $user['id'] : null;
     $done = $status === 'done';
-    q('UPDATE tasks SET status = ?, updated_at = ?, done_at = ?, done_by = ?, done_day = ? WHERE id = ?',
-        [$status, now(), $done ? now() : null, $done ? $uid : null, $done ? current_game_day() : null, (int) $t['id']]);
+    // done_day = Spieltag, an dem die Aufgabe zu ging (erledigt oder verworfen), danach richtet sich das Archivieren zum Monatsende.
+    // Wieder geöffnet heißt auch: raus aus dem Archiv.
+    $closed = $done || $status === 'dropped';
+    q('UPDATE tasks SET status = ?, updated_at = ?, done_at = ?, done_by = ?, done_day = ?, archived_at = IF(?, archived_at, NULL), archived_by = IF(?, archived_by, NULL) WHERE id = ?',
+        [$status, now(), $done ? now() : null, $done ? $uid : null, $closed ? current_game_day() : null, (int) $closed, (int) $closed, (int) $t['id']]);
     task_log((int) $t['id'], $uid, $user ? 'status' : 'auto', TASK_STATUSES[$t['status']] . ' → ' . TASK_STATUSES[$status] . ($note !== '' ? ' (' . $note . ')' : ''));
 
     // Wer eine freie Aufgabe in Arbeit nimmt, übernimmt sie
@@ -478,7 +481,7 @@ function tasks_auto_sync(int $sgId, string $now, array &$log): void
     }
 
     if (setting_int('tasks_auto_animals') === 1) {
-        $titles = ['food' => 'Futter nachfüllen', 'water' => 'Wasser auffüllen', 'straw' => 'Stroh einstreuen'];
+        $titles = ['food' => 'Futter nachfüllen', 'water' => 'Wasser auffüllen', 'straw' => 'Stroh einstreuen', 'health' => 'Tiere versorgen'];
         foreach (q('SELECT * FROM husbandries WHERE savegame_id = ? AND removed_at IS NULL AND animals > 0', [$sgId])->fetchAll() as $pen) {
             if (!farm_is_active((int) $pen['farm_id'])) {
                 continue;
@@ -487,7 +490,9 @@ function tasks_auto_sync(int $sgId, string $now, array &$log): void
                 $what = $titles[$a['key']] ?? (filltype_name((string) ($a['type'] ?? '')) . ' abholen');
                 $want['pen:' . $pen['pen_key'] . ':' . $a['key']] = [
                     'title' => $what . ': ' . $pen['name'],
-                    'description' => $a['text'] . ' (' . animal_name($pen['animal_type']) . '). Schließt sich von selbst, sobald es nach dem nächsten Save wieder passt.',
+                    'description' => $a['text'] . ' (' . animal_name($pen['animal_type']) . ').'
+                        . ($a['key'] === 'health' ? ' Meist fehlt etwas: Futter (alle Sorten), Wasser, Stroh oder Platz. Stall ggf. ausmisten.' : '')
+                        . ' Schließt sich von selbst, sobald es nach dem nächsten Save wieder passt.',
                     'farm_id' => (int) $pen['farm_id'],
                     'priority' => $a['level'] === 'bad' ? 4 : (str_starts_with($a['key'], 'product_') ? 2 : 3),
                     'ref_type' => 'pen', 'ref_id' => $pen['pen_key'],
@@ -535,30 +540,74 @@ function tasks_auto_sync(int $sgId, string $now, array &$log): void
     }
 }
 
+// ---------------------------------------------------------------- Archiv
+
+/** Archivieren: geschlossene Aufgaben (erledigt/verworfen), wer sie bearbeiten darf */
+function task_can_archive(?array $user, array $t): bool
+{
+    return in_array($t['status'], ['done', 'dropped'], true) && (task_can_edit($user, $t) || can($user, 'tasks.assign'));
+}
+
+function task_archive(array $t, ?array $user, bool $archive = true): void
+{
+    q('UPDATE tasks SET archived_at = ?, archived_by = ? WHERE id = ?', [$archive ? now() : null, $archive && $user ? (int) $user['id'] : null, (int) $t['id']]);
+    task_log((int) $t['id'], $user ? (int) $user['id'] : null, $user ? 'edit' : 'auto', $archive ? 'archiviert' : 'aus dem Archiv geholt');
+}
+
+/** Lohnauftrag archivieren: nur erledigte oder stornierte, mit dem Recht „Lohnaufträge verwalten“ */
+function contract_can_archive(?array $user, array $c): bool
+{
+    return in_array($c['status'], ['done', 'cancelled'], true) && can($user, 'contracts.manage');
+}
+
+/** Lohnauftrag ins Archiv (seine geschlossenen Aufgaben gehen mit) oder wieder heraus */
+function contract_archive(array $c, ?array $user, bool $archive = true): void
+{
+    $uid = $user ? (int) $user['id'] : null;
+    q('UPDATE contracts SET archived_at = ?, archived_by = ? WHERE id = ?', [$archive ? now() : null, $archive ? $uid : null, (int) $c['id']]);
+    if ($archive) {
+        q('UPDATE tasks SET archived_at = ?, archived_by = ? WHERE contract_id = ? AND status IN (\'done\', \'dropped\') AND archived_at IS NULL', [now(), $uid, (int) $c['id']]);
+    }
+}
+
 /**
- * Erledigte Aufgaben aufräumen: Was in einem früheren Spielmonat erledigt wurde, wird gelöscht (Einstellung, Standard an).
- * Ausgenommen sind Aufgaben eines noch offenen Lohnauftrags. Buchungsvorschläge hängen am Auftrag, nicht an der Aufgabe.
- * Aufgaben, die vor 0.8 erledigt wurden, haben keinen Erledigt-Tag: Sie bekommen den heutigen und gehen im nächsten Monat.
+ * Zum Monatsende archivieren (Einstellung tasks_cleanup_done, Standard an): Aufgaben, die in einem früheren Spielmonat
+ * erledigt oder verworfen wurden, und Lohnaufträge, die in einem früheren Monat erledigt oder storniert wurden.
+ * Nichts wird gelöscht. Aufgaben eines noch offenen Lohnauftrags bleiben auf dem Board.
+ * Was noch keinen Tag hat (alte Einträge), bekommt den heutigen und geht im nächsten Monat ins Archiv.
  */
 function tasks_cleanup_done(int $sgId, array &$log): void
 {
     if (setting_int('tasks_cleanup_done') !== 1 || ($today = current_game_day()) === null) {
         return;
     }
-    q('UPDATE tasks SET done_day = ? WHERE savegame_id = ? AND status = \'done\' AND done_day IS NULL', [$today, $sgId]);
+    q('UPDATE tasks SET done_day = ? WHERE savegame_id = ? AND status IN (\'done\', \'dropped\') AND done_day IS NULL', [$today, $sgId]);
+    q('UPDATE contracts SET done_day = ? WHERE savegame_id = ? AND status IN (\'done\', \'cancelled\') AND done_day IS NULL', [$today, $sgId]);
     $month = game_month_of($today);
     if ($month === null) {
         return;
     }
-    $ids = q('SELECT t.id FROM tasks t LEFT JOIN contracts c ON c.id = t.contract_id
-              WHERE t.savegame_id = ? AND t.status = \'done\' AND t.done_day < ?
-                AND (t.contract_id IS NULL OR c.id IS NULL OR c.status IN (\'done\', \'cancelled\'))', [$sgId, $month['start']])->fetchAll(PDO::FETCH_COLUMN);
-    foreach ($ids as $id) {
-        task_delete((int) $id);
+    $now = now();
+    $tasks = q('UPDATE tasks t LEFT JOIN contracts c ON c.id = t.contract_id SET t.archived_at = ?
+                WHERE t.savegame_id = ? AND t.status IN (\'done\', \'dropped\') AND t.archived_at IS NULL AND t.done_day < ?
+                  AND (t.contract_id IS NULL OR c.id IS NULL OR c.status IN (\'done\', \'cancelled\'))', [$now, $sgId, $month['start']])->rowCount();
+    $contracts = q('UPDATE contracts SET archived_at = ? WHERE savegame_id = ? AND status IN (\'done\', \'cancelled\') AND archived_at IS NULL AND done_day < ?',
+        [$now, $sgId, $month['start']])->rowCount();
+    if ($tasks || $contracts) {
+        $log[] = "Archiv: {$tasks} Aufgabe(n) und {$contracts} Lohnauftrag/-aufträge aus dem Vormonat archiviert.";
     }
-    if ($ids) {
-        $log[] = 'Aufgaben: ' . count($ids) . ' erledigte aus dem Vormonat gelöscht.';
+}
+
+/** Archivierte Aufgaben des aktuellen Savegames, neueste zuerst */
+function tasks_archived(int $farmId, int $limit = 300): array
+{
+    $sql = 'SELECT * FROM tasks WHERE savegame_id <=> ? AND archived_at IS NOT NULL';
+    $params = [current_savegame_id()];
+    if ($farmId > 0) {
+        $sql .= ' AND (farm_id = ? OR farm_id IS NULL)';
+        $params[] = $farmId;
     }
+    return q($sql . ' ORDER BY archived_at DESC, id DESC LIMIT ' . max(1, $limit), $params)->fetchAll();
 }
 
 // ---------------------------------------------------------------- Lohnaufträge
@@ -623,13 +672,13 @@ function contract_check_done(int $contractId, ?array $user): void
     }
 }
 
-/** Lohnaufträge des aktuellen Savegames, offene zuerst */
-function contracts_list(bool $withClosed): array
+/** Lohnaufträge des aktuellen Savegames, offene zuerst. $archived = nur das Archiv. */
+function contracts_list(bool $withClosed, bool $archived = false): array
 {
     $sql = 'SELECT c.*, (SELECT COUNT(*) FROM tasks t WHERE t.contract_id = c.id AND t.status NOT IN (\'done\', \'dropped\')) AS tasks_open,
                    (SELECT COUNT(*) FROM tasks t WHERE t.contract_id = c.id AND t.status <> \'dropped\') AS tasks_all
-            FROM contracts c WHERE c.savegame_id <=> ?';
-    if (!$withClosed) {
+            FROM contracts c WHERE c.savegame_id <=> ? AND c.archived_at IS ' . ($archived ? 'NOT NULL' : 'NULL');
+    if (!$withClosed && !$archived) {
         $sql .= ' AND (c.status IN (\'open\', \'accepted\') OR c.done_at > NOW() - INTERVAL 30 DAY)';
     }
     $sql .= ' ORDER BY FIELD(c.status, \'open\', \'accepted\', \'done\', \'cancelled\'), c.due_day IS NULL, c.due_day, c.id DESC';
