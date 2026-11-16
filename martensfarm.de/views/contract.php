@@ -66,6 +66,9 @@ $formHtml = function () use ($contract, $farms, $farmlands, $form, $dayOptions, 
         <label>Notiz
             <textarea name="note" rows="3" maxlength="5000" placeholder="z. B. Stroh bleibt liegen, Abfuhr macht der Auftraggeber"><?= e($form['note']) ?></textarea>
         </label>
+        <label class="check-label"><input class="check" type="checkbox" name="ai_helper" value="1"<?= !empty($form['ai_helper']) ? ' checked' : '' ?><?= $locked ? ' disabled' : '' ?>> 🤖 Von KI-Helfern im Spiel abarbeiten lassen</label>
+        <p class="muted small">Dann übernimmt niemand aus der Runde die Aufgaben, sie stehen als „KI-Helfer“ auf dem Board. Wer die Helfer startet und am Ende prüft, schiebt die Aufgabe weiter.
+            Den Helferlohn bucht das Spiel als „Lohnzahlungen“, der taucht unter Finanzen bei den Vorschlägen auf.</p>
         <?php if (!$contract): ?>
             <label class="check-label"><input class="check" type="checkbox" name="create_task" value="1" checked> Gleich eine Aufgabe dafür aufs Board stellen</label>
         <?php endif; ?>
@@ -100,6 +103,7 @@ $formHtml = function () use ($contract, $farms, $farmlands, $form, $dayOptions, 
             <h2>Auftrag</h2>
             <table class="table compact">
                 <tr><th>Auftraggeber</th><td><?= e(contract_client($contract)) ?><?= $contract['client_farm_id'] === null ? ' <span class="muted small">(extern)</span>' : '' ?></td></tr>
+                <tr><th>Wer arbeitet</th><td><?= (int) $contract['ai_helper'] === 1 ? '🤖 KI-Helfer im Spiel' : 'Mitspieler (über die Aufgaben)' ?></td></tr>
                 <tr><th>Feld</th><td><?= $contract['farmland_id'] !== null ? e(farmland_label((int) $contract['farmland_id'])) : '<span class="muted">–</span>' ?></td></tr>
                 <tr><th>Preis</th><td><?= (int) $contract['price'] > 0 ? e(fmt_money((int) $contract['price'])) : '<span class="muted">noch offen</span>' ?></td></tr>
                 <tr><th>Fällig</th><td><?= $contract['due_day'] !== null ? e($active ? game_day_label((int) $contract['due_day']) : (game_day_info((int) $contract['due_day'])['date'] ?? 'Tag ' . (int) $contract['due_day'])) : '<span class="muted">ohne Termin</span>' ?></td></tr>
@@ -136,7 +140,7 @@ $formHtml = function () use ($contract, $farms, $farmlands, $form, $dayOptions, 
                     <?php foreach ($tasks as $t): ?>
                         <li><span class="badge<?= $t['status'] === 'done' ? ' ok' : '' ?>"><?= e(TASK_STATUSES[$t['status']] ?? '') ?></span>
                             <a href="<?= e(url('aufgaben/aufgabe?id=' . (int) $t['id'])) ?>"><?= e($t['title']) ?></a>
-                            <span class="muted small"><?= $t['assignee_id'] !== null ? '· ' . e($names[(int) $t['assignee_id']] ?? '?') : '· offen' ?></span></li>
+                            <span class="muted small">· <?= e(task_assignee_label($t, $names)) ?></span></li>
                     <?php endforeach; ?>
                 </ul>
             <?php else: ?>

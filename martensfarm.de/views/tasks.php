@@ -48,7 +48,7 @@ $total = array_sum(array_map('count', $columns)) - count($columns['done']);
                         <a class="task-title" href="<?= e(url('aufgaben/aufgabe?id=' . (int) $t['id'])) ?>"><?= e($t['title']) ?></a>
                         <div class="task-meta">
                             <?php if ((int) $t['priority'] >= 3): ?><span class="badge <?= (int) $t['priority'] === 4 ? 'bad' : 'warn' ?>"><?= e(TASK_PRIORITIES[(int) $t['priority']]) ?></span><?php endif; ?>
-                            <span class="badge"><?= $t['assignee_id'] !== null ? '👤 ' . e($names[(int) $t['assignee_id']] ?? '?') : 'offen' ?></span>
+                            <span class="badge<?= (int) $t['ai_helper'] === 1 ? ' ai' : '' ?>"><?= e(task_assignee_label($t, $names)) ?></span>
                             <?php if ($t['due_day'] !== null && $status !== 'done'): ?><span class="badge<?= $overdue ? ' bad' : '' ?>">📅 <?= e(game_day_label((int) $t['due_day'])) ?></span><?php endif; ?>
                             <?php if ($ref): ?><span class="badge"><?= $refIcons[$ref[0]] ?? '' ?> <?= e($ref[1]) ?></span><?php endif; ?>
                             <?php if ($contract): ?><span class="badge">🤝 <?= e(contract_client($contract)) ?></span><?php endif; ?>

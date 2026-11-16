@@ -39,10 +39,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!$errors && $action === 'create') {
             $now = now();
             $withTask = isset($_POST['create_task']);
-            q('INSERT INTO contracts (savegame_id, farm_id, client_farm_id, client_name, service, farmland_id, price, due_day, note, status, created_by, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+            q('INSERT INTO contracts (savegame_id, farm_id, client_farm_id, client_name, service, farmland_id, price, due_day, note, ai_helper, status, created_by, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
                 current_savegame_id(), $data['farm_id'], $data['client_farm_id'], $data['client_name'] !== '' ? $data['client_name'] : null,
-                $data['service'], $data['farmland_id'], $data['price'], $data['due_day'], $data['note'] !== '' ? $data['note'] : null,
+                $data['service'], $data['farmland_id'], $data['price'], $data['due_day'], $data['note'] !== '' ? $data['note'] : null, $data['ai_helper'],
                 $withTask ? 'accepted' : 'open', (int) $user['id'], $now, $now,
             ]);
             $newId = (int) db()->lastInsertId();
@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'title' => 'Lohnauftrag: ' . $data['service'], 'description' => 'Für ' . contract_client($c) . ($data['note'] !== '' ? "\n" . $data['note'] : ''),
                     'farm_id' => $data['farm_id'], 'priority' => 2, 'assignee_id' => 0, 'due_day' => $data['due_day'],
                     'ref_type' => $data['farmland_id'] !== null ? 'farmland' : null, 'ref_id' => $data['farmland_id'] !== null ? (string) $data['farmland_id'] : null,
-                    'contract_id' => $newId, 'status' => 'todo',
+                    'contract_id' => $newId, 'status' => 'todo', 'ai_helper' => $data['ai_helper'],
                 ]);
             }
             flash('success', 'Lohnauftrag angelegt' . ($withTask ? ', die Aufgabe steht auf dem Board.' : '.'));
@@ -63,10 +63,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Nach dem Abschluss sind Preis und Höfe in den Vorschlägen, deshalb nur noch Text ändern
                 q('UPDATE contracts SET service = ?, note = ?, updated_at = ? WHERE id = ?', [$data['service'], $data['note'] !== '' ? $data['note'] : null, now(), (int) $contract['id']]);
             } else {
-                q('UPDATE contracts SET farm_id = ?, client_farm_id = ?, client_name = ?, service = ?, farmland_id = ?, price = ?, due_day = ?, note = ?, updated_at = ? WHERE id = ?', [
+                q('UPDATE contracts SET farm_id = ?, client_farm_id = ?, client_name = ?, service = ?, farmland_id = ?, price = ?, due_day = ?, note = ?, ai_helper = ?, updated_at = ? WHERE id = ?', [
                     $data['farm_id'], $data['client_farm_id'], $data['client_name'] !== '' ? $data['client_name'] : null, $data['service'], $data['farmland_id'],
-                    $data['price'], $data['due_day'], $data['note'] !== '' ? $data['note'] : null, now(), (int) $contract['id'],
+                    $data['price'], $data['due_day'], $data['note'] !== '' ? $data['note'] : null, $data['ai_helper'], now(), (int) $contract['id'],
                 ]);
+                // KI-Helfer an/aus gilt auch für die offenen Aufgaben, die niemandem aus der Runde gehören
+                if ($data['ai_helper'] !== (int) $contract['ai_helper']) {
+                    foreach (q('SELECT * FROM tasks WHERE contract_id = ? AND status NOT IN (\'done\', \'dropped\') AND assignee_id IS NULL', [(int) $contract['id']])->fetchAll() as $t) {
+                        task_set_ai($t, (bool) $data['ai_helper'], $user);
+                    }
+                }
             }
             flash('success', 'Gespeichert.');
             redirect($self);
@@ -106,9 +112,10 @@ $form ??= $contract ? [
     'client_name' => (string) $contract['client_name'], 'service' => $contract['service'],
     'farmland_id' => $contract['farmland_id'] !== null ? (int) $contract['farmland_id'] : null, 'price' => (int) $contract['price'],
     'due_day' => $contract['due_day'] !== null ? (int) $contract['due_day'] : null, 'note' => (string) $contract['note'],
+    'ai_helper' => (int) $contract['ai_helper'],
 ] : [
     'farm_id' => isset($farms[(int) ($user['farm_id'] ?? 0)]) ? (int) $user['farm_id'] : (int) array_key_first($farms),
-    'client' => '', 'client_name' => '', 'service' => '', 'farmland_id' => null, 'price' => '', 'due_day' => null, 'note' => '',
+    'client' => '', 'client_name' => '', 'service' => '', 'farmland_id' => null, 'price' => '', 'due_day' => null, 'note' => '', 'ai_helper' => 0,
 ];
 
 $tasks = $contract ? q('SELECT * FROM tasks WHERE contract_id = ? ORDER BY FIELD(status, \'doing\', \'todo\', \'review\', \'backlog\', \'done\', \'dropped\'), id', [(int) $contract['id']])->fetchAll() : [];

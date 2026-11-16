@@ -326,9 +326,9 @@ function task_create(?array $user, array $data): int
 {
     $now = now();
     $status = isset(TASK_COLUMNS[$data['status'] ?? '']) ? $data['status'] : 'todo';
-    q('INSERT INTO tasks (savegame_id, farm_id, title, description, status, priority, assignee_id, due_day, ref_type, ref_id, contract_id, auto_key,
+    q('INSERT INTO tasks (savegame_id, farm_id, title, description, status, priority, assignee_id, ai_helper, due_day, ref_type, ref_id, contract_id, auto_key,
                           created_by, created_at, updated_at, done_at, done_by, done_day)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
         $data['savegame_id'] ?? current_savegame_id(),
         ($data['farm_id'] ?? null) ?: null,
         mb_substr((string) $data['title'], 0, 150),
@@ -336,6 +336,7 @@ function task_create(?array $user, array $data): int
         $status,
         isset(TASK_PRIORITIES[(int) ($data['priority'] ?? 0)]) ? (int) $data['priority'] : 2,
         ($data['assignee_id'] ?? null) ?: null,
+        empty($data['assignee_id']) && !empty($data['ai_helper']) ? 1 : 0,
         $data['due_day'] ?? null,
         $data['ref_type'] ?? null,
         $data['ref_id'] ?? null,
@@ -351,6 +352,8 @@ function task_create(?array $user, array $data): int
     task_log($id, $user ? (int) $user['id'] : null, 'created', $user ? '' : 'Automatisch angelegt');
     if (!empty($data['assignee_id'])) {
         task_log($id, $user ? (int) $user['id'] : null, 'assign', 'an ' . (user_names()[(int) $data['assignee_id']] ?? '?'));
+    } elseif (!empty($data['ai_helper'])) {
+        task_log($id, $user ? (int) $user['id'] : null, 'assign', 'an KI-Helfer');
     }
     return $id;
 }
@@ -379,12 +382,32 @@ function task_set_status(array $t, string $status, ?array $user, string $note = 
     }
 }
 
+/** Wer arbeitet die Aufgabe ab? „🤖 KI-Helfer“, Nickname oder „offen“ */
+function task_assignee_label(array $t, array $names): string
+{
+    if ($t['assignee_id'] !== null) {
+        return '👤 ' . ($names[(int) $t['assignee_id']] ?? '?');
+    }
+    return (int) ($t['ai_helper'] ?? 0) === 1 ? '🤖 KI-Helfer' : 'offen';
+}
+
+/** Aufgabe den KI-Helfern im Spiel geben (oder wieder wegnehmen). Eine Person ist dann nicht mehr zugewiesen. */
+function task_set_ai(array $t, bool $ai, ?array $user): void
+{
+    if ((int) ($t['ai_helper'] ?? 0) === (int) $ai && (!$ai || $t['assignee_id'] === null)) {
+        return;
+    }
+    q('UPDATE tasks SET ai_helper = ?, assignee_id = IF(?, NULL, assignee_id), updated_at = ? WHERE id = ?', [(int) $ai, (int) $ai, now(), (int) $t['id']]);
+    task_log((int) $t['id'], $user ? (int) $user['id'] : null, 'assign', $ai ? 'an KI-Helfer' : 'KI-Helfer abgezogen, wieder offen');
+}
+
 function task_assign(array $t, ?int $assigneeId, ?array $user): void
 {
     if (($t['assignee_id'] === null ? null : (int) $t['assignee_id']) === $assigneeId) {
         return;
     }
-    q('UPDATE tasks SET assignee_id = ?, updated_at = ? WHERE id = ?', [$assigneeId, now(), (int) $t['id']]);
+    // Eine Person übernimmt: dann arbeiten nicht mehr die KI-Helfer daran
+    q('UPDATE tasks SET assignee_id = ?, ai_helper = IF(? IS NULL, ai_helper, 0), updated_at = ? WHERE id = ?', [$assigneeId, $assigneeId, now(), (int) $t['id']]);
     $uid = $user ? (int) $user['id'] : null;
     if ($assigneeId === null) {
         task_log((int) $t['id'], $uid, 'assign', 'wieder offen (niemand zugewiesen)');
@@ -405,7 +428,9 @@ function task_form_read(array $post, array $people, array $farms): array
     $desc = trim((string) ($post['description'] ?? ''));
     $farmId = (int) ($post['farm_id'] ?? 0);
     $prio = (int) ($post['priority'] ?? 2);
-    $assignee = (int) ($post['assignee_id'] ?? 0);
+    // „ai“ = KI-Helfer im Spiel arbeiten die Aufgabe ab, niemand aus der Runde
+    $ai = (string) ($post['assignee_id'] ?? '') === 'ai';
+    $assignee = $ai ? 0 : (int) ($post['assignee_id'] ?? 0);
     $dueRaw = trim((string) ($post['due_day'] ?? ''));
     // Bezug kommt als „typ:id“ aus einer Auswahl mit Gruppen (Fahrzeuge, Ställe, Felder)
     [$refType, $refId] = array_pad(explode(':', (string) ($post['ref'] ?? ''), 2), 2, '');
@@ -441,7 +466,7 @@ function task_form_read(array $post, array $people, array $farms): array
     }
     return [[
         'title' => $title, 'description' => $desc, 'farm_id' => $farmId, 'priority' => $prio,
-        'assignee_id' => $assignee, 'due_day' => $due, 'ref_type' => $refType, 'ref_id' => $refId,
+        'assignee_id' => $assignee, 'ai_helper' => $ai ? 1 : 0, 'due_day' => $due, 'ref_type' => $refType, 'ref_id' => $refId,
     ], $errors];
 }
 
@@ -743,6 +768,7 @@ function contract_form_read(array $post, array $farms): array
         'farm_id' => $farmId, 'client' => $client, 'client_farm_id' => $clientFarm, 'client_name' => $clientName,
         'service' => $service, 'farmland_id' => $farmland === '' ? null : (int) $farmland,
         'price' => is_numeric($priceRaw) ? (int) round((float) $priceRaw) : 0, 'due_day' => $due, 'note' => $note,
+        'ai_helper' => isset($post['ai_helper']) ? 1 : 0,
     ], $errors];
 }
 

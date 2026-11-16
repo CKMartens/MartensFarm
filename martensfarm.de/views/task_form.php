@@ -40,6 +40,7 @@ $editing = $task !== null;
         <label>Zugewiesen an
             <select name="assignee_id">
                 <option value="0">– offen, jeder kann übernehmen –</option>
+                <option value="ai"<?= !empty($form['ai_helper']) && empty($form['assignee_id']) ? ' selected' : '' ?>>🤖 KI-Helfer im Spiel</option>
                 <?php foreach ($people as $id => $nick): if (!$canAssign && $id !== (int) $user['id'] && $id !== (int) $form['assignee_id']) { continue; } ?>
                     <option value="<?= (int) $id ?>"<?= (int) $id === (int) $form['assignee_id'] ? ' selected' : '' ?>><?= e($nick) ?><?= $id === (int) $user['id'] ? ' (ich)' : '' ?></option>
                 <?php endforeach; ?>

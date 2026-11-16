@@ -29,7 +29,7 @@ $badge = ['open' => '', 'accepted' => 'warn', 'done' => 'ok', 'cancelled' => 'ba
             <tbody>
             <?php foreach ($contracts as $c): $s = $suggestions[(int) $c['id']] ?? null; ?>
                 <tr class="<?= $c['status'] === 'cancelled' ? 'inactive' : '' ?>">
-                    <td><a href="<?= e(url('lohnauftraege/auftrag?id=' . (int) $c['id'])) ?>"><?= e($c['service']) ?></a>
+                    <td><a href="<?= e(url('lohnauftraege/auftrag?id=' . (int) $c['id'])) ?>"><?= e($c['service']) ?></a><?= (int) $c['ai_helper'] === 1 ? ' <span class="badge ai" title="Von KI-Helfern abgearbeitet">🤖 KI</span>' : '' ?>
                         <?php if ($c['farmland_id'] !== null): ?><br><span class="muted small"><?= e(farmland_label((int) $c['farmland_id'])) ?></span><?php endif; ?></td>
                     <td><?= e(contract_client($c)) ?><?= $c['client_farm_id'] === null ? ' <span class="muted small">(extern)</span>' : '' ?></td>
                     <td><?= e(farm_name((int) $c['farm_id'])) ?></td>

@@ -1,4 +1,4 @@
-# MartensFarm – Hof-Management für LS25 (Phase 1)
+# MartensFarm – Hof-Management für LS25 (1.0 RC)
 
 Eigene Web-App für euren Multiplayer-Hof auf **martensfarm.de**.
 Holt die Daten automatisch vom Dedicated Server (Nitrado) und zeigt sie euch im Browser.
@@ -370,6 +370,18 @@ So funktioniert's:
 - **Archiv:** Erledigte/verworfene Aufgaben und erledigte/stornierte Lohnaufträge lassen sich auf ihrer Seite archivieren und
   wieder herausholen. Zum nächsten Spielmonat archiviert der Import sie automatisch (ersetzt das automatische Löschen aus 0.9,
   Schalter unter **Einstellungen → Aufgaben**). Archiv unter `/aufgaben` → „Archiv“ bzw. `/lohnauftraege` → „Archiv“.
+
+### Update auf 1.0 RC (KI-Helfer, Release-Kandidat)
+
+1. Dateien hochladen (wie oben, `config/config.php` bleibt).
+2. `keyhelp-php85 bin/update-db.php` ausführen. Ergänzt `contracts.ai_helper` und `tasks.ai_helper`. Keine neuen Rechte.
+
+Damit ist alles für das erste Release drin, jetzt läuft die Testphase. Neu:
+- **Lohnauftrag an KI-Helfer:** Beim Anlegen oder Bearbeiten „🤖 Von KI-Helfern im Spiel abarbeiten lassen“ anhaken. Seine Aufgaben
+  stehen dann als „🤖 KI-Helfer“ auf dem Board statt „offen“ und zählen auf dem Dashboard nicht als „noch niemand dran“.
+  Wer die Helfer startet und am Ende prüft, schiebt die Aufgabe weiter, danach schließt sich der Auftrag wie gewohnt.
+- Auch einzelne Aufgaben lassen sich unter „Zugewiesen an“ den KI-Helfern geben. Übernimmt ein Mitspieler, ist der Haken weg.
+- Den Helferlohn bucht das Spiel als „Lohnzahlungen“, er erscheint unter Finanzen bei den Vorschlägen (Buchungssatz Lohn).
 
 ---
 
